@@ -625,14 +625,18 @@ if st.session_state.phone:
 else:
     # Not logged in - show welcome
     
-    # Mobile-friendly login buttons at top
+    # Mobile-friendly call-to-action
+    st.info("📱 **Mobile users:** Tap the **☰** icon in the top-left corner to Login or Register")
+    
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🔑 Login", use_container_width=True, type="primary"):
-            st.info("👈 Use the sidebar to login (tap ☰ icon on mobile)")
+        st.markdown("### 🔑 Already Have Account?")
+        st.markdown("**Login** in the sidebar →")
     with col2:
-        if st.button("✨ Register Free", use_container_width=True):
-            st.info("👈 Use the sidebar to register (tap ☰ icon on mobile)")
+        st.markdown("### ✨ New User?")
+        st.markdown("**Register Free** in the sidebar →")
+    
+    st.divider()
     
     st.markdown("""
     ## Welcome to the Future of Destiny Guidance 🔮
