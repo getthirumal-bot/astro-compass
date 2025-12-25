@@ -625,16 +625,18 @@ if st.session_state.phone:
 else:
     # Not logged in - show welcome
     
-    # Mobile-friendly call-to-action
-    st.info("📱 **Mobile users:** Tap the **☰** icon in the top-left corner to Login or Register")
+    # Big prominent call-to-action for mobile
+    st.warning("### 📱 GET STARTED\n**Tap >> (top-left corner) to open sidebar**\n\nThen choose Login or Register")
+    
+    st.markdown("---")
     
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### 🔑 Already Have Account?")
-        st.markdown("**Login** in the sidebar →")
+        st.markdown("## 🔑 Have Account?")
+        st.markdown("## **← LOGIN**")
     with col2:
-        st.markdown("### ✨ New User?")
-        st.markdown("**Register Free** in the sidebar →")
+        st.markdown("## ✨ New Here?")
+        st.markdown("## **← REGISTER**")
     
     st.divider()
     
