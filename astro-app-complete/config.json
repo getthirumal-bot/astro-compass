@@ -1,0 +1,49 @@
+{
+  "app_settings": {
+    "free_lifetime_questions": 15,
+    "free_daily_token_limit": 1500,
+    "default_language": "English",
+    "supported_languages": [
+      "English", "Hindi", "Telugu", "Tamil", "Kannada", "Malayalam", 
+      "Bengali", "Marathi", "Spanish", "French", "German", "Italian",
+      "Portuguese", "Russian", "Chinese", "Japanese", "Korean", 
+      "Arabic", "Indonesian", "Thai", "Filipino", "Urdu", "Sinhala",
+      "Nepali", "Malay", "Afrikaans"
+    ],
+    "supported_astrology_systems": [
+      "Vedic", "KP System", "Western", "Chinese", "Mayan",
+      "Numerology (Pythagorean)", "Numerology (Chaldean)", 
+      "Nadi Astrology", "Palmistry", "Prashna (Horary)",
+      "Tarot", "I Ching", "Mayan Tzolkin", "Tibetan Astrology",
+      "Face Reading", "Feng Shui"
+    ]
+  },
+  "subscription_tiers": {
+    "FREE": {
+      "price": 0,
+      "questions": 15,
+      "features": ["5-system consensus", "Basic predictions", "15 lifetime questions"],
+      "photo_storage": false
+    },
+    "PAID": {
+      "price": 1,
+      "questions": "unlimited",
+      "features": ["Unlimited questions", "Chat history", "Multi-language", "Custom systems (text-based)", "Memory across sessions"],
+      "photo_storage": false
+    },
+    "PREMIUM": {
+      "price": 5,
+      "questions": "unlimited",
+      "features": ["All PAID features", "Palmistry (with photo upload)", "Face Reading (with photo)", "Priority support", "Detailed reports", "Numerology integration", "Photo storage included"],
+      "photo_storage": true,
+      "storage_limit_mb": 50
+    },
+    "VIP": {
+      "price": 50,
+      "questions": "unlimited",
+      "features": ["All PREMIUM features", "Weekly insights", "Annual forecast", "Direct consultation", "All astrology systems", "Unlimited photo storage", "Priority processing"],
+      "photo_storage": true,
+      "storage_limit_mb": "unlimited"
+    }
+  }
+}

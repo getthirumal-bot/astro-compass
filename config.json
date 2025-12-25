@@ -1,0 +1,44 @@
+{
+  "gemini_api_key": "AIzaSyCsR47EsV_uD_CxS1WpN5m3IHWvCWK7Yv4",
+  "app_settings": {
+    "free_lifetime_questions": 15,
+    "free_daily_token_limit": 1500,
+    "default_language": "English",
+    "supported_languages": [
+      "English", "Hindi", "Telugu", "Tamil", "Kannada", "Malayalam", 
+      "Bengali", "Marathi", "Spanish", "French", "German", "Italian",
+      "Portuguese", "Russian", "Chinese", "Japanese", "Korean", 
+      "Arabic", "Indonesian", "Thai", "Filipino", "Urdu", "Sinhala",
+      "Nepali", "Malay", "Afrikaans"
+    ],
+    "supported_astrology_systems": [
+      "Vedic", "KP System", "Western", "Chinese", "Mayan",
+      "Numerology (Pythagorean)", "Numerology (Chaldean)", 
+      "Nadi Astrology", "Palmistry", "Prashna (Horary)",
+      "Tarot", "I Ching", "Mayan Tzolkin", "Tibetan Astrology",
+      "Face Reading", "Feng Shui"
+    ]
+  },
+  "subscription_tiers": {
+    "FREE": {
+      "price": 0,
+      "questions": 15,
+      "features": ["5-system consensus", "Basic predictions", "15 lifetime questions"]
+    },
+    "PAID": {
+      "price": 1,
+      "questions": "unlimited",
+      "features": ["Unlimited questions", "Chat history", "Multi-language", "Custom systems", "Memory across sessions"]
+    },
+    "PREMIUM": {
+      "price": 5,
+      "questions": "unlimited",
+      "features": ["All PAID features", "Palmistry analysis", "Priority support", "Detailed reports", "Numerology integration"]
+    },
+    "VIP": {
+      "price": 50,
+      "questions": "unlimited",
+      "features": ["All PREMIUM features", "Weekly insights", "Annual forecast", "Direct consultation", "All astrology systems"]
+    }
+  }
+}
