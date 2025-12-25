@@ -171,7 +171,8 @@ ALL_COUNTRIES = [
 st.set_page_config(
     page_title="Astro Consensus Compass",
     page_icon="🧭",
-    layout="centered"
+    layout="centered",
+    initial_sidebar_state="expanded"  # Sidebar open by default on mobile
 )
 
 # Initialize engine
@@ -623,6 +624,16 @@ if st.session_state.phone:
 
 else:
     # Not logged in - show welcome
+    
+    # Mobile-friendly login buttons at top
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔑 Login", use_container_width=True, type="primary"):
+            st.info("👈 Use the sidebar to login (tap ☰ icon on mobile)")
+    with col2:
+        if st.button("✨ Register Free", use_container_width=True):
+            st.info("👈 Use the sidebar to register (tap ☰ icon on mobile)")
+    
     st.markdown("""
     ## Welcome to the Future of Destiny Guidance 🔮
     
@@ -653,7 +664,7 @@ else:
     
     ---
     
-    **👈 Login or Register to begin your cosmic journey**
+    **👈 Login or Register in the sidebar to begin (tap ☰ on mobile)**
     """)
     
     # Sample testimonials
