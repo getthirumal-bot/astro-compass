@@ -628,16 +628,6 @@ else:
     # Clear call-to-action for mobile
     st.info("📱 **Mobile users:** Tap the **>>** icon (top-left) to open sidebar, then Login or Register")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("### 🔑 Have Account?")
-        st.markdown("**← LOGIN in sidebar**")
-    with col2:
-        st.markdown("### ✨ New User?")
-        st.markdown("**← REGISTER in sidebar**")
-    
-    st.divider()
-    
     st.markdown("""
     ## Welcome to the Future of Destiny Guidance 🔮
     
