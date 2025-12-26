@@ -797,3 +797,4 @@ else:
 # Footer
 st.divider()
 st.caption("Built with ❤️ • Powered by Gemini AI • Your data is private & secure")
+ 
