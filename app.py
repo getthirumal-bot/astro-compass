@@ -560,6 +560,44 @@ if st.session_state.phone:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
     
+    # Suggested questions for new users
+    if len(st.session_state.chat_history) == 0:
+        st.markdown("### 💡 Not sure what to ask? Try these:")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("💼 Career Guidance", use_container_width=True):
+                prompt = "What does my career look like in the next 6 months?"
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                st.rerun()
+            if st.button("💰 Financial Outlook", use_container_width=True):
+                prompt = "Is this a good time for major investments or financial decisions?"
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                st.rerun()
+        
+        with col2:
+            if st.button("💍 Love & Marriage", use_container_width=True):
+                prompt = "When will I find my life partner? What should I know about my love life?"
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                st.rerun()
+            if st.button("👨‍👩‍👧 Family Matters", use_container_width=True):
+                prompt = "What guidance do you have for my children's future and family harmony?"
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                st.rerun()
+        
+        with col3:
+            if st.button("🎯 Life Purpose", use_container_width=True):
+                prompt = "What is my life purpose? What natural talents should I focus on?"
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                st.rerun()
+            if st.button("🏖️ Retirement Planning", use_container_width=True):
+                prompt = "When is the best time for me to plan retirement or achieve financial freedom?"
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                st.rerun()
+        
+        st.markdown("---")
+    
     # Chat input
     if prompt := st.chat_input("Ask your cosmic question..."):
         # Add user message to chat
@@ -629,36 +667,55 @@ else:
     st.info("📱 **Mobile users:** Tap the **>>** icon (top-left) to open sidebar, then Login or Register")
     
     st.markdown("""
-    ## Welcome to the Future of Destiny Guidance 🔮
+    ## The Astro-Compass: Your 5-System Destiny Guide 🧭
     
-    **What makes us different?**
+    ### Why These 5 Systems?
     
-    Unlike traditional astrology apps that rely on a single system, we use **5 ancient wisdom 
-    traditions** working together to give you the most accurate predictions:
+    Unlike single-system astrology apps, we synthesize **5 ancient wisdom traditions** to give you clarity at life's crossroads:
     
-    - 🕉️ **Vedic Astrology** - Precise timing through Dashas & Nakshatras
-    - 📊 **KP System** - Yes/No answers with surgical precision
-    - 🌍 **Western Astrology** - Psychological insights & life phases
-    - 🐉 **Chinese Astrology** - Elemental harmony & yearly luck
-    - 🌀 **Mayan Astrology** - Galactic rhythm & life purpose
+    - 🕉️ **Vedic Astrology: The Foundation** — Reveals your soul's purpose and the karmic timing of your life's major chapters
+    - 📊 **KP System: The Precision** — Uses sub-lord mathematics to give "Yes/No" answers and exact event timing
+    - 🌍 **Western Astrology: The Psychology** — Analyzes your personality, mental blocks, and modern-world interactions
+    - 🐉 **Chinese Astrology: The Energy Flow** — Predicts your yearly momentum and compatibility through nature's cycles
+    - 🌀 **Mayan Astrology: The Universal Rhythm** — Connects your daily energy to galactic frequency for spiritual alignment
     
-    **When all 5 systems agree → 95%+ confidence**
+    ### How They Work Together For You
+    
+    By cross-checking these 5 ancient perspectives, we remove individual system bias to give you a **70%–90% Truth Consensus**. 
+    
+    **When all five systems point to the same window → it's your time to act.**
+    
+    ---
+    
+    ### What Can Astro-Compass Guide You On?
+    
+    Perfect for when you're at a **crossroads or facing paradoxical choices:**
+    
+    💍 **Marriage & Relationships** — Compatibility, timing, love life  
+    💼 **Career & Business** — Job changes, entrepreneurship, partnerships  
+    💰 **Wealth & Investment** — Financial decisions, property, stocks  
+    👨‍👩‍👧 **Family Matters** — Children's futures, parents' health, family harmony  
+    🎯 **Life Purpose** — Finding your path, identifying natural talents  
+    🏖️ **Retirement & Freedom** — Planning your next chapter  
+    🧠 **Personal Growth** — Understanding your traits, attitudes, patterns  
+    
+    ---
     
     ### Try It Free
     
     - ✨ **15 free questions** to explore your destiny
-    - 💬 **Instant AI responses** powered by advanced intelligence
-    - 🌍 **Multi-language support** - English, Hindi, Telugu, Tamil, Spanish
+    - 💬 **Instant AI responses** in your language
+    - 🌍 **70+ countries, 25+ languages** supported
     
     ### Upgrade Anytime
     
-    - 💎 **$1/month** - Unlimited questions + chat history
-    - 🔮 **$5/month** - Premium features + palmistry analysis
-    - 👑 **$50/month** - VIP insights + weekly forecasts
+    - 💎 **$1/month** — Unlimited questions + full chat history
+    - 🔮 **$5/month** — Premium systems + palmistry analysis (coming soon)
+    - 👑 **$50/month** — VIP insights + weekly forecasts
     
     ---
     
-    **👈 Login or Register in the sidebar to begin (tap ☰ on mobile)**
+    **👈 Login or Register in the sidebar to begin**
     """)
     
     # Sample testimonials
