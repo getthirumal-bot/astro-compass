@@ -562,41 +562,79 @@ if st.session_state.phone:
     
     # Suggested questions for new users
     if len(st.session_state.chat_history) == 0:
-        st.markdown("### 💡 Not sure what to ask? Try these:")
+        st.markdown("### 💡 Quick Start - Pick a Topic:")
         
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
+        
+        suggested_q = None
         
         with col1:
-            if st.button("💼 Career Guidance", use_container_width=True):
-                prompt = "What does my career look like in the next 6 months?"
-                st.session_state.chat_history.append({"role": "user", "content": prompt})
-                st.rerun()
-            if st.button("💰 Financial Outlook", use_container_width=True):
-                prompt = "Is this a good time for major investments or financial decisions?"
-                st.session_state.chat_history.append({"role": "user", "content": prompt})
-                st.rerun()
+            if st.button("💼 Career", use_container_width=True):
+                suggested_q = "What does my career look like in the next 6 months?"
+            if st.button("🎯 Life Purpose", use_container_width=True):
+                suggested_q = "What is my life purpose? What natural talents should I focus on?"
         
         with col2:
-            if st.button("💍 Love & Marriage", use_container_width=True):
-                prompt = "When will I find my life partner? What should I know about my love life?"
-                st.session_state.chat_history.append({"role": "user", "content": prompt})
-                st.rerun()
-            if st.button("👨‍👩‍👧 Family Matters", use_container_width=True):
-                prompt = "What guidance do you have for my children's future and family harmony?"
-                st.session_state.chat_history.append({"role": "user", "content": prompt})
-                st.rerun()
+            if st.button("💰 Finances", use_container_width=True):
+                suggested_q = "Is this a good time for major investments or financial decisions?"
+            if st.button("🏖️ Retirement", use_container_width=True):
+                suggested_q = "When is the best time to plan retirement or achieve financial freedom?"
         
         with col3:
-            if st.button("🎯 Life Purpose", use_container_width=True):
-                prompt = "What is my life purpose? What natural talents should I focus on?"
-                st.session_state.chat_history.append({"role": "user", "content": prompt})
-                st.rerun()
-            if st.button("🏖️ Retirement Planning", use_container_width=True):
-                prompt = "When is the best time for me to plan retirement or achieve financial freedom?"
-                st.session_state.chat_history.append({"role": "user", "content": prompt})
-                st.rerun()
+            if st.button("💍 Love", use_container_width=True):
+                suggested_q = "When will I find my life partner? What should I know about my love life?"
+            if st.button("🤝 Relationships", use_container_width=True):
+                suggested_q = "How can I improve my relationships and find better compatibility?"
+        
+        with col4:
+            if st.button("👨‍👩‍👧 Family", use_container_width=True):
+                suggested_q = "What guidance do you have for my children and family harmony?"
+            if st.button("🧘 Inner Peace", use_container_width=True):
+                suggested_q = "How can I find clarity and peace during this confusing time?"
+        
+        # If a question was selected, process it immediately
+        if suggested_q:
+            st.session_state.chat_history.append({
+                "role": "user",
+                "content": suggested_q
+            })
+            st.session_state.pending_question = suggested_q
+            st.rerun()
         
         st.markdown("---")
+    
+    # Process pending question if exists
+    if hasattr(st.session_state, 'pending_question') and st.session_state.pending_question:
+        prompt = st.session_state.pending_question
+        st.session_state.pending_question = None  # Clear it
+        
+        # Display user message
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        # Get AI response immediately
+        with st.chat_message("assistant"):
+            progress_placeholder = st.empty()
+            progress_placeholder.progress(0.5, text="🔮 Consulting the cosmos...")
+            
+            result = engine.ask_question(
+                st.session_state.phone,
+                prompt,
+                conversation_history=st.session_state.chat_history
+            )
+            
+            progress_placeholder.empty()
+            
+            if result['success']:
+                response = result['response']
+                st.markdown(response)
+                
+                st.session_state.chat_history.append({
+                    "role": "assistant",
+                    "content": response
+                })
+            else:
+                st.error(result['response'])
     
     # Chat input
     if prompt := st.chat_input("Ask your cosmic question..."):
@@ -673,11 +711,11 @@ else:
     
     Unlike single-system astrology apps, we synthesize **5 ancient wisdom traditions** to give you clarity at life's crossroads:
     
-    - 🕉️ **Vedic Astrology: The Foundation** — Reveals your soul's purpose and the karmic timing of your life's major chapters
-    - 📊 **KP System: The Precision** — Uses sub-lord mathematics to give "Yes/No" answers and exact event timing
-    - 🌍 **Western Astrology: The Psychology** — Analyzes your personality, mental blocks, and modern-world interactions
-    - 🐉 **Chinese Astrology: The Energy Flow** — Predicts your yearly momentum and compatibility through nature's cycles
-    - 🌀 **Mayan Astrology: The Universal Rhythm** — Connects your daily energy to galactic frequency for spiritual alignment
+    - 🕉️ **Vedic Astrology: The Foundation** — Reveals your soul's purpose and karmic timing of life's major chapters
+    - 📊 **KP System: The Precision** — Uses sub-lord mathematics for "Yes/No" answers and exact event timing
+    - 🌍 **Western Astrology: The Psychology** — Analyzes personality, mental blocks, and modern-world interactions
+    - 🐉 **Chinese Astrology: The Energy Flow** — Predicts yearly momentum and compatibility through nature's cycles
+    - 🌀 **Mayan Astrology: The Universal Rhythm** — Connects daily energy to galactic frequency for spiritual alignment
     
     ### How They Work Together For You
     
@@ -685,35 +723,29 @@ else:
     
     **When all five systems point to the same window → it's your time to act.**
     
-    ---
-    
     ### What Can Astro-Compass Guide You On?
     
     Perfect for when you're at a **crossroads or facing paradoxical choices:**
     
-    💍 **Marriage & Relationships** — Compatibility, timing, love life  
-    💼 **Career & Business** — Job changes, entrepreneurship, partnerships  
-    💰 **Wealth & Investment** — Financial decisions, property, stocks  
-    👨‍👩‍👧 **Family Matters** — Children's futures, parents' health, family harmony  
-    🎯 **Life Purpose** — Finding your path, identifying natural talents  
-    🏖️ **Retirement & Freedom** — Planning your next chapter  
-    🧠 **Personal Growth** — Understanding your traits, attitudes, patterns  
-    
-    ---
+    💍 **Marriage** — Compatibility, timing, love life  
+    💼 **Career** — Job changes, entrepreneurship, partnerships  
+    💰 **Wealth** — Financial decisions, property, investments  
+    👨‍👩‍👧 **Family** — Children's futures, parents' health, harmony  
+    🎯 **Life Purpose** — Finding your path, natural talents  
+    🏖️ **Retirement** — Planning your next chapter  
+    🧠 **Personal Growth** — Understanding traits, attitudes, patterns  
     
     ### Try It Free
     
-    - ✨ **15 free questions** to explore your destiny
-    - 💬 **Instant AI responses** in your language
-    - 🌍 **70+ countries, 25+ languages** supported
+    ✨ **15 free questions** to explore your destiny  
+    💬 **Instant AI responses** in your language  
+    🌍 **70+ countries, 25+ languages** supported
     
     ### Upgrade Anytime
     
-    - 💎 **$1/month** — Unlimited questions + full chat history
-    - 🔮 **$5/month** — Premium systems + palmistry analysis (coming soon)
-    - 👑 **$50/month** — VIP insights + weekly forecasts
-    
-    ---
+    💎 **$1/month** — Unlimited questions + full chat history  
+    🔮 **$5/month** — Premium systems + palmistry (coming soon)  
+    👑 **$50/month** — VIP insights + weekly forecasts
     
     **👈 Login or Register in the sidebar to begin**
     """)
@@ -797,4 +829,3 @@ else:
 # Footer
 st.divider()
 st.caption("Built with ❤️ • Powered by Gemini AI • Your data is private & secure")
- 
