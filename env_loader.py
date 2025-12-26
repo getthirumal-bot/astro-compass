@@ -43,4 +43,4 @@ def get_email_config():
         'smtp_port': int(env_vars.get('SMTP_PORT', 587)),
         'smtp_email': env_vars.get('SMTP_EMAIL'),
         'smtp_password': env_vars.get('SMTP_PASSWORD'),
-    }
+    } 
