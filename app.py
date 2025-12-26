@@ -566,67 +566,61 @@ if st.session_state.phone:
         
         col1, col2, col3, col4, col5 = st.columns(5)
         
-        # Initialize flag to prevent duplicate submissions
-        if 'button_clicked' not in st.session_state:
-            st.session_state.button_clicked = False
-        
         suggested_q = None
         
         with col1:
-            if st.button("💼 Career", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("💼 Career", use_container_width=True, key="btn_career"):
                 suggested_q = "What does my career look like in the next 6 months?"
-            if st.button("💰 Money", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("💰 Money", use_container_width=True, key="btn_money"):
                 suggested_q = "Is this a good time for major investments or financial decisions?"
         
         with col2:
-            if st.button("💍 Love", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("💍 Love", use_container_width=True, key="btn_love"):
                 suggested_q = "When will I find my life partner? What should I know about my love life?"
-            if st.button("🤝 Marriage", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("🤝 Marriage", use_container_width=True, key="btn_marriage"):
                 suggested_q = "Is my current relationship leading to marriage? When?"
         
         with col3:
-            if st.button("👨‍👩‍👧 Family", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("👨‍👩‍👧 Family", use_container_width=True, key="btn_family"):
                 suggested_q = "What guidance for my children and family harmony?"
-            if st.button("👶 Children", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("👶 Children", use_container_width=True, key="btn_children"):
                 suggested_q = "When is the best time for me to have children?"
         
         with col4:
-            if st.button("🎯 Purpose", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("🎯 Purpose", use_container_width=True, key="btn_purpose"):
                 suggested_q = "What is my life purpose? What talents should I focus on?"
-            if st.button("🏖️ Retirement", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("🏖️ Retirement", use_container_width=True, key="btn_retirement"):
                 suggested_q = "When should I plan retirement or achieve financial freedom?"
         
         with col5:
-            if st.button("🧘 Peace", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("🧘 Peace", use_container_width=True, key="btn_peace"):
                 suggested_q = "How can I find clarity during this confusing time?"
-            if st.button("🏠 Property", use_container_width=True, disabled=st.session_state.button_clicked):
+            if st.button("🏠 Property", use_container_width=True, key="btn_property"):
                 suggested_q = "Is this a good time to buy property or invest in real estate?"
         
-        # Process ONLY if not already clicked
-        if suggested_q and not st.session_state.button_clicked:
-            st.session_state.button_clicked = True
-            st.session_state.chat_history.append({
-                "role": "user",
-                "content": suggested_q
-            })
+        # If button clicked, store question and trigger processing
+        if suggested_q:
             st.session_state.pending_question = suggested_q
             st.rerun()
         
         st.markdown("---")
-    else:
-        # Reset flag when chat history exists
-        st.session_state.button_clicked = False
     
-    # Process pending question if exists
+    # Process pending question ONCE
     if hasattr(st.session_state, 'pending_question') and st.session_state.pending_question:
         prompt = st.session_state.pending_question
-        del st.session_state.pending_question  # Delete to prevent re-processing
+        del st.session_state.pending_question  # Delete immediately to prevent re-processing
+        
+        # Add to history
+        st.session_state.chat_history.append({
+            "role": "user",
+            "content": prompt
+        })
         
         # Display user message
         with st.chat_message("user"):
             st.markdown(prompt)
         
-        # Get AI response immediately
+        # Get AI response
         with st.chat_message("assistant"):
             progress_placeholder = st.empty()
             progress_placeholder.progress(0.5, text="🔮 Consulting the cosmos...")
@@ -754,6 +748,8 @@ else:
     ✨ **15 free questions** to explore your destiny  
     💬 **Instant AI responses** in your language  
     🌍 **70+ countries, 25+ languages** supported
+    
+    📊 **Note:** Free tier has limited daily capacity. If the system is busy, consider upgrading for priority access.
     
     ### Upgrade Anytime
     
