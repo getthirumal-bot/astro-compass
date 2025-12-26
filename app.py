@@ -564,36 +564,47 @@ if st.session_state.phone:
     if len(st.session_state.chat_history) == 0:
         st.markdown("### 💡 Quick Start - Pick a Topic:")
         
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        # Initialize flag to prevent duplicate submissions
+        if 'button_clicked' not in st.session_state:
+            st.session_state.button_clicked = False
         
         suggested_q = None
         
         with col1:
-            if st.button("💼 Career", use_container_width=True):
+            if st.button("💼 Career", use_container_width=True, disabled=st.session_state.button_clicked):
                 suggested_q = "What does my career look like in the next 6 months?"
-            if st.button("🎯 Life Purpose", use_container_width=True):
-                suggested_q = "What is my life purpose? What natural talents should I focus on?"
+            if st.button("💰 Money", use_container_width=True, disabled=st.session_state.button_clicked):
+                suggested_q = "Is this a good time for major investments or financial decisions?"
         
         with col2:
-            if st.button("💰 Finances", use_container_width=True):
-                suggested_q = "Is this a good time for major investments or financial decisions?"
-            if st.button("🏖️ Retirement", use_container_width=True):
-                suggested_q = "When is the best time to plan retirement or achieve financial freedom?"
+            if st.button("💍 Love", use_container_width=True, disabled=st.session_state.button_clicked):
+                suggested_q = "When will I find my life partner? What should I know about my love life?"
+            if st.button("🤝 Marriage", use_container_width=True, disabled=st.session_state.button_clicked):
+                suggested_q = "Is my current relationship leading to marriage? When?"
         
         with col3:
-            if st.button("💍 Love", use_container_width=True):
-                suggested_q = "When will I find my life partner? What should I know about my love life?"
-            if st.button("🤝 Relationships", use_container_width=True):
-                suggested_q = "How can I improve my relationships and find better compatibility?"
+            if st.button("👨‍👩‍👧 Family", use_container_width=True, disabled=st.session_state.button_clicked):
+                suggested_q = "What guidance for my children and family harmony?"
+            if st.button("👶 Children", use_container_width=True, disabled=st.session_state.button_clicked):
+                suggested_q = "When is the best time for me to have children?"
         
         with col4:
-            if st.button("👨‍👩‍👧 Family", use_container_width=True):
-                suggested_q = "What guidance do you have for my children and family harmony?"
-            if st.button("🧘 Inner Peace", use_container_width=True):
-                suggested_q = "How can I find clarity and peace during this confusing time?"
+            if st.button("🎯 Purpose", use_container_width=True, disabled=st.session_state.button_clicked):
+                suggested_q = "What is my life purpose? What talents should I focus on?"
+            if st.button("🏖️ Retirement", use_container_width=True, disabled=st.session_state.button_clicked):
+                suggested_q = "When should I plan retirement or achieve financial freedom?"
         
-        # If a question was selected, process it immediately
-        if suggested_q:
+        with col5:
+            if st.button("🧘 Peace", use_container_width=True, disabled=st.session_state.button_clicked):
+                suggested_q = "How can I find clarity during this confusing time?"
+            if st.button("🏠 Property", use_container_width=True, disabled=st.session_state.button_clicked):
+                suggested_q = "Is this a good time to buy property or invest in real estate?"
+        
+        # Process ONLY if not already clicked
+        if suggested_q and not st.session_state.button_clicked:
+            st.session_state.button_clicked = True
             st.session_state.chat_history.append({
                 "role": "user",
                 "content": suggested_q
@@ -602,11 +613,14 @@ if st.session_state.phone:
             st.rerun()
         
         st.markdown("---")
+    else:
+        # Reset flag when chat history exists
+        st.session_state.button_clicked = False
     
     # Process pending question if exists
     if hasattr(st.session_state, 'pending_question') and st.session_state.pending_question:
         prompt = st.session_state.pending_question
-        st.session_state.pending_question = None  # Clear it
+        del st.session_state.pending_question  # Delete to prevent re-processing
         
         # Display user message
         with st.chat_message("user"):
@@ -701,21 +715,21 @@ if st.session_state.phone:
 else:
     # Not logged in - show welcome
     
-    # Clear call-to-action for mobile
-    st.info("📱 **Mobile users:** Tap the **>>** icon (top-left) to open sidebar, then Login or Register")
+    # Subtle mobile guidance
+    st.caption("📱 Mobile: Tap **>>** (top-left) to Login/Register")
     
     st.markdown("""
-    ## The Astro-Compass: Your 5-System Destiny Guide 🧭
+    ## The Astro-Compass: Your 5-System Destiny Guide
     
     ### Why These 5 Systems?
     
     Unlike single-system astrology apps, we synthesize **5 ancient wisdom traditions** to give you clarity at life's crossroads:
     
-    - 🕉️ **Vedic Astrology: The Foundation** — Reveals your soul's purpose and karmic timing of life's major chapters
-    - 📊 **KP System: The Precision** — Uses sub-lord mathematics for "Yes/No" answers and exact event timing
-    - 🌍 **Western Astrology: The Psychology** — Analyzes personality, mental blocks, and modern-world interactions
-    - 🐉 **Chinese Astrology: The Energy Flow** — Predicts yearly momentum and compatibility through nature's cycles
-    - 🌀 **Mayan Astrology: The Universal Rhythm** — Connects daily energy to galactic frequency for spiritual alignment
+    - 🕉️ **Vedic Astrology: The Foundation** — Soul's purpose and karmic timing
+    - 📊 **KP System: The Precision** — "Yes/No" answers with exact event timing  
+    - 🌍 **Western Astrology: The Psychology** — Personality, mental blocks, life patterns
+    - 🐉 **Chinese Astrology: The Energy Flow** — Yearly momentum via nature's cycles
+    - 🌀 **Mayan Astrology: The Universal Rhythm** — Daily energy and spiritual alignment
     
     ### How They Work Together For You
     
@@ -743,12 +757,25 @@ else:
     
     ### Upgrade Anytime
     
-    💎 **$1/month** — Unlimited questions + full chat history  
-    🔮 **$5/month** — Premium systems + palmistry (coming soon)  
-    👑 **$50/month** — VIP insights + weekly forecasts
-    
-    **👈 Login or Register in the sidebar to begin**
+    **💎 $1/month** — Unlimited questions + full chat history  
+    **🔮 $5/month** — Premium systems + palmistry (coming soon)  
+    **👑 $50/month** — VIP insights + weekly forecasts
     """)
+    
+    # Upgrade buttons
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("💎 Upgrade to $1/month", use_container_width=True, type="primary"):
+            st.info("👈 Please login first to upgrade")
+    with col2:
+        if st.button("🔮 Upgrade to $5/month", use_container_width=True):
+            st.info("👈 Please login first to upgrade")
+    with col3:
+        if st.button("👑 Upgrade to $50/month", use_container_width=True):
+            st.info("👈 Please login first to upgrade")
+    
+    st.markdown("---")
+    st.markdown("**👈 Login or Register in the sidebar to begin**")
     
     # Sample testimonials
     with st.expander("See what users are saying"):
