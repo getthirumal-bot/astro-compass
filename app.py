@@ -246,9 +246,8 @@ def create_session(phone):
     
     tier = user.get('subscription', 'FREE')
     success, message, session_token = session_manager.create_session(
-        user_phone=phone,
-        user_tier=tier,
-        stay_signed_in=True
+        phone=phone,
+        tier=tier
     )
     
     if success:
