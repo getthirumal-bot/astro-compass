@@ -204,6 +204,8 @@ if 'registration_step' not in st.session_state:
     st.session_state.registration_step = 1
 if 'temp_reg_data' not in st.session_state:
     st.session_state.temp_reg_data = {}
+if 'current_otp' not in st.session_state:
+    st.session_state.current_otp = None
 
 # Helper functions for OTP and sessions
 def send_otp(phone):
@@ -218,9 +220,10 @@ def send_otp(phone):
     if success:
         st.session_state.otp_sent = True
         st.session_state.otp_phone = phone
-        st.success(f"✅ {message}")
+        st.success(f"✅ OTP sent to {phone}")
         if dev_otp:
-            st.info(f"🔧 DEV MODE: Your OTP is **{dev_otp}**")
+            # Store OTP in session state so it persists across reruns
+            st.session_state.current_otp = dev_otp
         return True
     else:
         st.error(f"❌ {message}")
@@ -326,6 +329,11 @@ with st.sidebar:
         else:
             # Step 2: OTP Verification
             st.success(f"OTP sent to {st.session_state.otp_phone}")
+            
+            # Show OTP prominently for testing
+            if 'current_otp' in st.session_state and st.session_state.current_otp:
+                st.warning(f"🔧 **DEV MODE - Your OTP:** `{st.session_state.current_otp}`")
+            
             otp_code = st.text_input("Enter 6-digit OTP", max_chars=6, key="login_otp")
             
             col1, col2 = st.columns(2)
@@ -334,6 +342,8 @@ with st.sidebar:
                     if verify_otp(st.session_state.otp_phone, otp_code):
                         create_session(st.session_state.otp_phone)
                         st.session_state.otp_sent = False
+                        if 'current_otp' in st.session_state:
+                            del st.session_state.current_otp
                         st.rerun()
             
             with col2:
