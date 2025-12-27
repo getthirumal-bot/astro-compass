@@ -260,14 +260,16 @@ def create_session(phone):
 
 def logout():
     """Logout current session"""
-    if st.session_state.session_token:
-        session_manager.logout_session(st.session_state.session_token)
+    if st.session_state.session_token and st.session_state.phone:
+        session_manager.logout_session(st.session_state.phone, st.session_state.session_token)
     
     st.session_state.phone = None
     st.session_state.session_token = None
     st.session_state.chat_history = []
     st.session_state.otp_sent = False
     st.session_state.otp_phone = None
+    if 'current_otp' in st.session_state:
+        del st.session_state.current_otp
     st.rerun()
 
 # Header
