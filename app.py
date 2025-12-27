@@ -245,18 +245,18 @@ def create_session(phone):
         return None
     
     tier = user.get('subscription', 'FREE')
-    result = session_manager.create_session(
+    success, message, session_token = session_manager.create_session(
         user_phone=phone,
         user_tier=tier,
         stay_signed_in=True
     )
     
-    if result['success']:
-        st.session_state.session_token = result['session_token']
+    if success:
+        st.session_state.session_token = session_token
         st.session_state.phone = phone
-        return result['session_token']
+        return session_token
     else:
-        st.error(f"❌ {result['message']}")
+        st.error(f"❌ {message}")
         return None
 
 def logout():
