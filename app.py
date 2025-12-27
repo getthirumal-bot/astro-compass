@@ -1,94 +1,23 @@
 """
 Astro Consensus Engine - Streamlit Web Interface
-Simple chat-based UI for users to interact with the system
+Complete version with OTP authentication, session management, and enhanced features
 """
 
 import streamlit as st
 from datetime import datetime
+import time
 from astro_engine import AstroEngine
 from env_loader import get_api_key
 from country_utils import detect_country_from_phone, get_coordinates
+from otp_service import OTPService
+from session_manager import SessionManager
+import pytz
 
-# Shared country list - used in both login and registration
-ALL_COUNTRIES = [
-    ('🇮🇳 India', '+91'),
-    ('🇺🇸 United States', '+1'),
-    ('🇬🇧 United Kingdom', '+44'),
-    # Middle East
-    ('🇦🇪 UAE', '+971'),
-    ('🇸🇦 Saudi Arabia', '+966'),
-    ('🇶🇦 Qatar', '+974'),
-    ('🇰🇼 Kuwait', '+965'),
-    ('🇴🇲 Oman', '+968'),
-    ('🇧🇭 Bahrain', '+973'),
-    # Asia Pacific
-    ('🇦🇺 Australia', '+61'),
-    ('🇨🇦 Canada', '+1'),
-    ('🇸🇬 Singapore', '+65'),
-    ('🇲🇾 Malaysia', '+60'),
-    ('🇹🇭 Thailand', '+66'),
-    ('🇮🇩 Indonesia', '+62'),
-    ('🇵🇭 Philippines', '+63'),
-    ('🇵🇰 Pakistan', '+92'),
-    ('🇧🇩 Bangladesh', '+880'),
-    ('🇱🇰 Sri Lanka', '+94'),
-    ('🇳🇵 Nepal', '+977'),
-    ('🇲🇲 Myanmar', '+95'),
-    ('🇻🇳 Vietnam', '+84'),
-    ('🇰🇭 Cambodia', '+855'),
-    ('🇱🇦 Laos', '+856'),
-    # East Asia
-    ('🇨🇳 China', '+86'),
-    ('🇯🇵 Japan', '+81'),
-    ('🇰🇷 South Korea', '+82'),
-    ('🇭🇰 Hong Kong', '+852'),
-    ('🇹🇼 Taiwan', '+886'),
-    # Europe
-    ('🇩🇪 Germany', '+49'),
-    ('🇫🇷 France', '+33'),
-    ('🇮🇹 Italy', '+39'),
-    ('🇪🇸 Spain', '+34'),
-    ('🇷🇺 Russia', '+7'),
-    ('🇳🇱 Netherlands', '+31'),
-    ('🇵🇱 Poland', '+48'),
-    ('🇸🇪 Sweden', '+46'),
-    ('🇳🇴 Norway', '+47'),
-    ('🇩🇰 Denmark', '+45'),
-    ('🇫🇮 Finland', '+358'),
-    ('🇨🇭 Switzerland', '+41'),
-    ('🇦🇹 Austria', '+43'),
-    ('🇧🇪 Belgium', '+32'),
-    ('🇮🇪 Ireland', '+353'),
-    ('🇵🇹 Portugal', '+351'),
-    ('🇬🇷 Greece', '+30'),
-    # Americas
-    ('🇧🇷 Brazil', '+55'),
-    ('🇲🇽 Mexico', '+52'),
-    ('🇦🇷 Argentina', '+54'),
-    ('🇨🇴 Colombia', '+57'),
-    ('🇨🇱 Chile', '+56'),
-    ('🇵🇪 Peru', '+51'),
-    ('🇻🇪 Venezuela', '+58'),
-    # Africa
-    ('🇿🇦 South Africa', '+27'),
-    ('🇪🇬 Egypt', '+20'),
-    ('🇳🇬 Nigeria', '+234'),
-    ('🇰🇪 Kenya', '+254'),
-    ('🇬🇭 Ghana', '+233'),
-    ('🇺🇬 Uganda', '+256'),
-    ('🇹🇿 Tanzania', '+255'),
-    ('🇪🇹 Ethiopia', '+251'),
-    ('🇲🇦 Morocco', '+212'),
-    ('🇩🇿 Algeria', '+213'),
-    ('🇹🇳 Tunisia', '+216'),
-    ('🇿🇼 Zimbabwe', '+263'),
-    ('🇿🇲 Zambia', '+260'),
-    ('🇧🇼 Botswana', '+267'),
-    ('🇳🇦 Namibia', '+264'),
-    ('🇲🇺 Mauritius', '+230'),
-]
+# Initialize services
+otp_service = OTPService()
+session_manager = SessionManager()
 
-# Shared countries list for both login and registration
+# Shared country list
 ALL_COUNTRIES = [
     ('🇮🇳 India', '+91'),
     ('🇺🇸 United States', '+1'),
@@ -169,10 +98,10 @@ ALL_COUNTRIES = [
 
 # Page config
 st.set_page_config(
-    page_title="Astro Consensus Compass",
+    page_title="Astro Compass",
     page_icon="🧭",
     layout="centered",
-    initial_sidebar_state="expanded"  # Sidebar open by default on mobile
+    initial_sidebar_state="expanded"
 )
 
 # Initialize engine
@@ -183,672 +112,532 @@ def init_engine():
 
 engine = init_engine()
 
-# Session state for login
+# Session state initialization
 if 'phone' not in st.session_state:
     st.session_state.phone = None
+if 'session_token' not in st.session_state:
+    st.session_state.session_token = None
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
+if 'otp_sent' not in st.session_state:
+    st.session_state.otp_sent = False
+if 'otp_phone' not in st.session_state:
+    st.session_state.otp_phone = None
+if 'registration_step' not in st.session_state:
+    st.session_state.registration_step = 1
+if 'show_registration' not in st.session_state:
+    st.session_state.show_registration = False
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 'main'
+
+# Check for existing session on startup
+if st.session_state.phone is None and st.session_state.session_token is None:
+    # Try to restore session from browser storage
+    if 'session_token_check' not in st.session_state:
+        st.session_state.session_token_check = True
+
+# Helper functions
+def send_otp(phone):
+    """Send OTP to phone number"""
+    result = otp_service.send_otp(phone)
+    if result['success']:
+        st.session_state.otp_sent = True
+        st.session_state.otp_phone = phone
+        st.success(f"✅ OTP sent to {phone}")
+        if result.get('dev_otp'):
+            st.info(f"🔧 DEV MODE: Your OTP is **{result['dev_otp']}**")
+        return True
+    else:
+        st.error(f"❌ {result['message']}")
+        return False
+
+def verify_otp(phone, otp_code):
+    """Verify OTP code"""
+    result = otp_service.verify_otp(phone, otp_code)
+    if result['success']:
+        return True
+    else:
+        st.error(f"❌ {result['message']}")
+        return False
+
+def create_session(phone, stay_signed_in=True):
+    """Create new session for user"""
+    user = engine.db.get_user(phone)
+    if not user:
+        return None
+    
+    result = session_manager.create_session(
+        user_phone=phone,
+        user_tier=user.get('tier', 'FREE'),
+        stay_signed_in=stay_signed_in
+    )
+    
+    if result['success']:
+        st.session_state.session_token = result['session_token']
+        st.session_state.phone = phone
+        return result['session_token']
+    else:
+        st.error(f"❌ {result['message']}")
+        return None
+
+def logout():
+    """Logout current session"""
+    if st.session_state.session_token:
+        session_manager.logout_session(st.session_state.session_token)
+    
+    st.session_state.phone = None
+    st.session_state.session_token = None
+    st.session_state.chat_history = []
+    st.session_state.otp_sent = False
+    st.session_state.otp_phone = None
+    st.session_state.registration_step = 1
+    st.session_state.show_registration = False
+    st.rerun()
 
 # Header
-st.title("🧭 Astro Consensus Compass")
-st.caption("Your Cosmic Guide • 5 Core Systems (Vedic, KP, Western, Chinese, Mayan) + 11 Optional Systems")
+st.title("🧭 Astro Compass")
+st.caption("Your Cosmic Guide • 5-System Consensus + AI Insights")
 
-# Sidebar - Login/Register
+# Sidebar - Login/Register/User Info
 with st.sidebar:
-    st.header("Login")
-    
-    if st.session_state.phone is None:
-        # Login form - Country selection OUTSIDE any container for reactivity
-        st.subheader("Login")
-        
-        # Country code selector for login (REACTIVE)
-        login_country = st.selectbox(
-            "Select Your Country",
-            options=[c[0] for c in ALL_COUNTRIES],
-            key="login_country"
-        )
-        
-        login_code = next(c[1] for c in ALL_COUNTRIES if c[0] == login_country)
-        
-        # Show detected code
-        st.info(f"**Country Code:** {login_code}")
-        
-        # Phone number input (just digits)
-        phone_only = st.text_input(
-            f"Phone Number ({login_code} will be added automatically)",
-            placeholder="9876543210",
-            key="login_phone_input",
-            help="Enter only digits (browser may suggest your name - ignore it, type your phone number)"
-        )
-        
-        # Construct full phone
-        phone_input = f"{login_code}{phone_only}" if phone_only else ""
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("Login", use_container_width=True):
-                if phone_input:
-                    user = engine.db.get_user(phone_input)
-                    if user:
-                        st.session_state.phone = phone_input
-                        st.rerun()
-                    else:
-                        st.error("User not found. Please register.")
-                else:
-                    st.warning("Enter phone number")
-        
-        with col2:
-            if st.button("Register", use_container_width=True):
-                st.session_state.show_registration = True
-        
-        # Registration form
-        if 'show_registration' in st.session_state and st.session_state.show_registration:
+    if st.session_state.phone:
+        # User logged in - show info
+        user = engine.db.get_user(st.session_state.phone)
+        if user:
+            st.success(f"👤 {user['name']}")
+            
+            # Show tier and quota
+            tier = user.get('tier', 'FREE')
+            questions_asked = user.get('questions_asked', 0)
+            questions_limit = user.get('questions_limit', 7)
+            
+            st.info(f"**Tier:** {tier}\n**Questions:** {questions_asked}/{questions_limit}")
+            
+            # Show active sessions
+            user_sessions = session_manager.get_user_sessions(st.session_state.phone)
+            active_count = len(user_sessions)
+            
+            if tier == 'FREE':
+                max_devices = 1
+            elif tier == 'PAID':
+                max_devices = 2
+            elif tier == 'PREMIUM':
+                max_devices = 3
+            else:  # VIP
+                max_devices = float('inf')
+            
+            device_text = f"∞" if max_devices == float('inf') else str(max_devices)
+            st.caption(f"📱 Active Devices: {active_count}/{device_text}")
+            
+            # Navigation
             st.divider()
-            st.subheader("Register")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🏠 Home", use_container_width=True):
+                    st.session_state.current_page = 'main'
+                    st.rerun()
+            with col2:
+                if st.button("⚙️ Sessions", use_container_width=True):
+                    st.session_state.current_page = 'sessions'
+                    st.rerun()
             
-            # STEP 1: Country selection (OUTSIDE FORM - updates reactively)
-            selected_country = st.selectbox(
-                "Select Your Country*",
-                options=[c[0] for c in ALL_COUNTRIES],
-                index=0,
-                key="selected_country_reactive"
-            )
-            
-            # Get country details
-            country_code = next(c[1] for c in ALL_COUNTRIES if c[0] == selected_country)
-            country_name = selected_country.split(' ', 1)[1]
-            
-            # Get languages
-            country_info = detect_country_from_phone(country_code + "1234567890")
-            available_languages = country_info['languages'] if country_info else ['English']
-            
-            # Show preview
-            st.info(f"**Country Code:** {country_code} | **Languages:** {', '.join(available_languages)}")
-            
-            # STEP 2: Rest of form
-            with st.form("registration_form"):
-                name = st.text_input("Full Name*")
-                
-                # Email for weekly updates
-                email = st.text_input(
-                    "Email (Optional - for weekly cosmic updates)",
-                    placeholder="your.email@example.com",
-                    help="Get weekly forecasts and insights delivered to your inbox"
-                )
-                
-                # Phone number (country code auto-filled from selection above)
-                st.caption(f"**Phone Number** (Country code {country_code} auto-added)")
-                phone_number = st.text_input("Phone Number*", placeholder="9876543210", key="phone_num", label_visibility="collapsed")
-                
-                # Combine to full phone
-                reg_phone = f"{country_code}{phone_number}" if phone_number else ""
-                
-                # Birth details
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    dob = st.date_input("Date of Birth*", 
-                                       min_value=datetime(1900, 1, 1),
-                                       max_value=datetime.now())
-                with col_b:
-                    # Manual time input for precise birth time
-                    time_col1, time_col2 = st.columns(2)
-                    with time_col1:
-                        hour = st.number_input("Hour (0-23)", min_value=0, max_value=23, value=8)
-                    with time_col2:
-                        minute = st.number_input("Min (0-59)", min_value=0, max_value=59, value=12)
-                    tob = f"{hour:02d}:{minute:02d}"
-                
-                # Place details
-                place_city = st.text_input("City*", placeholder="Hyderabad")
-                place_state = st.text_input("State/Province (optional)", placeholder="Telangana")
-                
-                # Language selection
-                preferred_language = st.selectbox(
-                    "Preferred Language*",
-                    options=available_languages,
-                    index=0
-                )
-                
-                # Additional Astrology Systems (OPTIONAL)
-                st.divider()
-                st.caption("🔮 Additional Systems")
-                
-                st.info("**Premium systems require paid subscription ($1/month)**")
-                
-                # Free additional systems
-                free_systems = st.multiselect(
-                    "Free Systems (Available to all)",
-                    options=[
-                        'Numerology (Pythagorean)',
-                        'Prashna (Horary)',
-                        'I Ching',
-                    ],
-                    default=[]
-                )
-                
-                # Premium systems requiring payment
-                premium_systems = st.multiselect(
-                    "Premium Systems ($5/month - Includes photo storage)",
-                    options=[
-                        'Numerology (Chaldean)',
-                        'Nadi Astrology',
-                        'Palmistry (Photo upload required)',
-                        'Tarot',
-                        'Mayan Tzolkin',
-                        'Tibetan Astrology',
-                        'Face Reading (Photo upload required)',
-                        'Feng Shui'
-                    ],
-                    default=[],
-                    help="Photo-based systems (Palmistry, Face Reading) require $5/month PREMIUM plan for secure photo storage"
-                )
-                
-                # Combine systems
-                additional_systems = free_systems + premium_systems
-                
-                # Determine required subscription tier
-                has_photo_systems = any(sys in premium_systems for sys in ['Palmistry (Photo upload required)', 'Face Reading (Photo upload required)'])
-                
-                if has_photo_systems:
-                    required_tier = 'PREMIUM'
-                    required_price = '$5/month'
-                    tier_message = "⚠️ Photo-based systems require PREMIUM ($5/month) for secure storage (50MB included)"
-                elif len(premium_systems) > 0:
-                    required_tier = 'PAID'
-                    required_price = '$1/month'
-                    tier_message = "⚠️ You've selected premium systems. Subscription ($1/month) required after registration."
-                else:
-                    required_tier = 'FREE'
-                    required_price = None
-                    tier_message = None
-                
-                # Show warning if premium selected
-                if tier_message:
-                    st.warning(tier_message)
-                
-                # Photo upload for palmistry/face reading
-                palm_photo = None
-                if 'Palmistry' in premium_systems:
-                    st.info("📸 **Palmistry Requirements:**\n- Upload clear photos of both palms\n- Place small stickers on fingertips (to avoid storing fingerprints)\n- Ensure all palm lines are visible")
-                    palm_photo = st.file_uploader("Upload Palm Photos (Left & Right)", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
-                
-                # DISCLAIMER
-                st.divider()
-                st.warning("""
-                **⚠️ DISCLAIMER**
-                
-                **Probabilistic Logic:** We use a 5-system consensus to provide strategic guidance, not absolute certainty.
-                
-                **Directional Compass:** These insights serve as one strategic input among many—not your final decision.
-                
-                **No Guarantees:** Predictions are based on cosmic patterns and mathematical probabilities. Specific outcomes cannot be guaranteed.
-                
-                **Professional First:** Always consult qualified legal, financial, or medical professionals for critical life choices.
-                
-                **User Responsibility:** By registering, you acknowledge this service is for strategic guidance and entertainment purposes only.
-                """)
-                
-                # Combine place
-                if place_state:
-                    place = f"{place_city}, {place_state}, {country_name}"
-                else:
-                    place = f"{place_city}, {country_name}"
-                
-                submitted = st.form_submit_button("Create Account", use_container_width=True)
-                
-                if submitted:
-                    if name and phone_number and place_city:
-                        # Get coordinates
-                        lat, lon = get_coordinates(place_city, country_name)
-                        
-                        result = engine.register_user(
-                            phone=reg_phone,
-                            name=name,
-                            dob=dob.strftime("%Y-%m-%d"),
-                            tob=tob,
-                            place=place
-                        )
-                        
-                        if result['success']:
-                            # Update user data with correct tier
-                            engine.db.update_user(reg_phone, {
-                                'email': email if email else '',
-                                'language': preferred_language,
-                                'custom_systems': additional_systems,
-                                'subscription': required_tier
-                            })
-                            
-                            # TODO: Save palm photos if uploaded
-                            # if palm_photo:
-                            #     save_palm_photos(reg_phone, palm_photo)
-                            
-                            success_msg = result['message']
-                            if required_price:
-                                success_msg += f"\n\n💳 **Subscription required:** {required_price} to activate selected premium systems."
-                            
-                            st.success(success_msg)
-                            st.session_state.phone = reg_phone
-                            st.session_state.show_registration = False
-                            st.rerun()
-                        else:
-                            st.error(result['message'])
-                    else:
-                        st.warning("Please fill all required fields (*)")
+            # Logout button
+            st.divider()
+            if st.button("🚪 Logout", use_container_width=True, type="secondary"):
+                logout()
     
     else:
-        # User logged in
-        user = engine.db.get_user(st.session_state.phone)
+        # Not logged in - show login/register
+        st.header("Welcome!")
         
-        st.success(f"Welcome, {user['name']}! 👋")
+        tab1, tab2 = st.tabs(["Login", "Register"])
         
-        # Profile editor toggle
-        if st.button("✏️ Edit Profile", use_container_width=True):
-            st.session_state.show_profile_editor = True
-        
-        # Profile editor
-        if st.session_state.get('show_profile_editor', False):
-            st.divider()
-            with st.form("profile_edit_form"):
-                st.subheader("Update Your Details")
+        # LOGIN TAB
+        with tab1:
+            if not st.session_state.otp_sent:
+                # Step 1: Phone number entry
+                login_country = st.selectbox(
+                    "Country",
+                    options=[c[0] for c in ALL_COUNTRIES],
+                    key="login_country"
+                )
+                login_code = next(c[1] for c in ALL_COUNTRIES if c[0] == login_country)
                 
-                # Name
-                new_name = st.text_input("Name", value=user['name'])
+                st.info(f"**Code:** {login_code}")
                 
-                # Email (NEW)
-                new_email = st.text_input(
-                    "Email (for weekly updates)",
-                    value=user.get('email', ''),
-                    placeholder="your.email@example.com",
-                    help="We'll send you weekly cosmic insights and forecasts"
+                phone_only = st.text_input(
+                    f"Phone Number",
+                    placeholder="9876543210",
+                    key="login_phone_input"
                 )
                 
-                # Birth details
-                st.caption("Birth Details")
-                col1, col2 = st.columns(2)
+                phone_input = f"{login_code}{phone_only}" if phone_only else ""
                 
+                if st.button("Send OTP", use_container_width=True):
+                    if phone_input:
+                        user = engine.db.get_user(phone_input)
+                        if user:
+                            send_otp(phone_input)
+                        else:
+                            st.error("❌ User not found. Please register.")
+                    else:
+                        st.warning("⚠️ Enter phone number")
+            
+            else:
+                # Step 2: OTP verification
+                st.success(f"OTP sent to {st.session_state.otp_phone}")
+                
+                otp_code = st.text_input("Enter 6-digit OTP", max_chars=6, key="login_otp")
+                
+                col1, col2 = st.columns(2)
                 with col1:
-                    current_dob = datetime.strptime(user['birth_details']['dob'], '%Y-%m-%d').date()
-                    new_dob = st.date_input("Date of Birth", value=current_dob)
+                    if st.button("Verify", use_container_width=True):
+                        if verify_otp(st.session_state.otp_phone, otp_code):
+                            create_session(st.session_state.otp_phone)
+                            st.session_state.otp_sent = False
+                            st.rerun()
                 
                 with col2:
-                    current_tob = user['birth_details']['tob']
-                    hour, minute = map(int, current_tob.split(':'))
-                    time_col1, time_col2 = st.columns(2)
-                    with time_col1:
-                        new_hour = st.number_input("Hour", min_value=0, max_value=23, value=hour)
-                    with time_col2:
-                        new_minute = st.number_input("Min", min_value=0, max_value=59, value=minute)
-                    new_tob = f"{new_hour:02d}:{new_minute:02d}"
-                
-                # Place
-                new_place = st.text_input("Place of Birth", value=user['birth_details']['place'])
-                
-                # Language
-                available_langs = ['English', 'Hindi', 'Telugu', 'Tamil', 'Kannada', 'Malayalam', 
-                                  'Bengali', 'Marathi', 'Spanish', 'French', 'Arabic', 'Chinese']
-                current_lang_index = available_langs.index(user.get('language', 'English')) if user.get('language', 'English') in available_langs else 0
-                new_language = st.selectbox("Preferred Language", options=available_langs, index=current_lang_index)
-                
-                # Submit
-                col_save, col_cancel = st.columns(2)
-                
-                with col_save:
-                    if st.form_submit_button("💾 Save Changes", use_container_width=True):
-                        # Update user
-                        updates = {
-                            'name': new_name,
-                            'email': new_email,
-                            'birth_details': {
-                                'dob': new_dob.strftime('%Y-%m-%d'),
-                                'tob': new_tob,
-                                'place': new_place,
-                                'lat': user['birth_details']['lat'],  # Keep existing
-                                'lon': user['birth_details']['lon']   # Keep existing
-                            },
-                            'language': new_language
-                        }
-                        
-                        engine.db.update_user(st.session_state.phone, updates)
-                        st.success("✅ Profile updated successfully!")
-                        st.session_state.show_profile_editor = False
-                        st.rerun()
-                
-                with col_cancel:
-                    if st.form_submit_button("❌ Cancel", use_container_width=True):
-                        st.session_state.show_profile_editor = False
+                    if st.button("Cancel", use_container_width=True):
+                        st.session_state.otp_sent = False
+                        st.session_state.otp_phone = None
                         st.rerun()
         
-        # Usage stats
-        st.divider()
-        st.subheader("Your Stats")
-        
-        if user['subscription'] == 'FREE':
-            remaining = 15 - user['lifetime_questions']
-            st.metric("Questions Left", f"{remaining}/15")
-            
-            progress = user['lifetime_questions'] / 15
-            st.progress(progress)
-            
-            if remaining <= 5:
-                st.warning(f"Only {remaining} free questions left!")
-                if st.button("Upgrade to $1/month", use_container_width=True):
-                    result = engine.upgrade_to_paid(st.session_state.phone)
-                    st.success(result['message'])
-                    st.rerun()
-        else:
-            st.success(f"✨ {user['subscription']} Plan")
-            st.metric("Questions", "Unlimited")
-        
-        st.divider()
-        
-        # Logout
-        if st.button("Logout", use_container_width=True):
-            st.session_state.phone = None
-            st.session_state.chat_history = []
-            st.rerun()
-
-# Main chat interface
-if st.session_state.phone:
-    user = engine.db.get_user(st.session_state.phone)
-    
-    # Display chat history
-    chat_container = st.container()
-    
-    with chat_container:
-        for message in st.session_state.chat_history:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-    
-    # Suggested questions for new users
-    if len(st.session_state.chat_history) == 0:
-        st.markdown("### 💡 Quick Start - Pick a Topic:")
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        suggested_q = None
-        
-        with col1:
-            if st.button("💼 Career", use_container_width=True, key="btn_career"):
-                suggested_q = "What does my career look like in the next 6 months?"
-            if st.button("💰 Money", use_container_width=True, key="btn_money"):
-                suggested_q = "Is this a good time for major investments or financial decisions?"
-        
-        with col2:
-            if st.button("💍 Love", use_container_width=True, key="btn_love"):
-                suggested_q = "When will I find my life partner? What should I know about my love life?"
-            if st.button("🤝 Marriage", use_container_width=True, key="btn_marriage"):
-                suggested_q = "Is my current relationship leading to marriage? When?"
-        
-        with col3:
-            if st.button("👨‍👩‍👧 Family", use_container_width=True, key="btn_family"):
-                suggested_q = "What guidance for my children and family harmony?"
-            if st.button("👶 Children", use_container_width=True, key="btn_children"):
-                suggested_q = "When is the best time for me to have children?"
-        
-        with col4:
-            if st.button("🎯 Purpose", use_container_width=True, key="btn_purpose"):
-                suggested_q = "What is my life purpose? What talents should I focus on?"
-            if st.button("🏖️ Retirement", use_container_width=True, key="btn_retirement"):
-                suggested_q = "When should I plan retirement or achieve financial freedom?"
-        
-        with col5:
-            if st.button("🧘 Peace", use_container_width=True, key="btn_peace"):
-                suggested_q = "How can I find clarity during this confusing time?"
-            if st.button("🏠 Property", use_container_width=True, key="btn_property"):
-                suggested_q = "Is this a good time to buy property or invest in real estate?"
-        
-        # If button clicked, store question and trigger processing
-        if suggested_q:
-            st.session_state.pending_question = suggested_q
-            st.rerun()
-        
-        st.markdown("---")
-    
-    # Process pending question ONCE
-    if hasattr(st.session_state, 'pending_question') and st.session_state.pending_question:
-        prompt = st.session_state.pending_question
-        del st.session_state.pending_question  # Delete immediately to prevent re-processing
-        
-        # Add to history
-        st.session_state.chat_history.append({
-            "role": "user",
-            "content": prompt
-        })
-        
-        # Display user message
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        # Get AI response
-        with st.chat_message("assistant"):
-            progress_placeholder = st.empty()
-            progress_placeholder.progress(0.5, text="🔮 Consulting the cosmos...")
-            
-            result = engine.ask_question(
-                st.session_state.phone,
-                prompt,
-                conversation_history=st.session_state.chat_history
-            )
-            
-            progress_placeholder.empty()
-            
-            if result['success']:
-                response = result['response']
-                st.markdown(response)
+        # REGISTER TAB
+        with tab2:
+            if st.session_state.registration_step == 1:
+                # Step 1: Basic info + OTP
+                st.markdown("### Step 1: Verify Phone")
                 
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": response
-                })
-            else:
-                st.error(result['response'])
-    
-    # Chat input
-    if prompt := st.chat_input("Ask your cosmic question..."):
-        # Add user message to chat
-        st.session_state.chat_history.append({
-            "role": "user",
-            "content": prompt
-        })
-        
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        # Get AI response
-        with st.chat_message("assistant"):
-            # Simple progress bar
-            progress_placeholder = st.empty()
-            progress_placeholder.progress(0.5, text="🔮 Consulting the cosmos...")
-            
-            # Get AI response
-            result = engine.ask_question(
-                st.session_state.phone,
-                prompt,
-                conversation_history=st.session_state.chat_history
-            )
-            
-            # Clear progress
-            progress_placeholder.empty()
-            
-            # Display result
-            
-            if result['success']:
-                response = result['response']
-                st.markdown(response)
+                reg_country = st.selectbox(
+                    "Country",
+                    options=[c[0] for c in ALL_COUNTRIES],
+                    key="reg_country"
+                )
+                reg_code = next(c[1] for c in ALL_COUNTRIES if c[0] == reg_country)
                 
-                # Add to chat history
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": response
-                })
-            else:
-                # Error occurred
-                st.error(result['response'])
+                st.info(f"**Code:** {reg_code}")
                 
-                # Check if retry is available
-                if result.get('retry_available'):
-                    st.warning("💡 **Tip:** This is temporary server congestion. Try again in a few seconds!")
+                reg_name = st.text_input("Full Name*", key="reg_name")
+                reg_phone_only = st.text_input("Phone Number*", placeholder="9876543210", key="reg_phone")
+                reg_email = st.text_input("Email (optional)", placeholder="name@example.com", key="reg_email")
+                
+                reg_phone = f"{reg_code}{reg_phone_only}" if reg_phone_only else ""
+                
+                if not st.session_state.otp_sent:
+                    if st.button("Send OTP", use_container_width=True):
+                        if reg_name and reg_phone:
+                            # Check if user exists
+                            existing = engine.db.get_user(reg_phone)
+                            if existing:
+                                st.error("❌ Phone already registered. Please login.")
+                            else:
+                                # Save temp data
+                                st.session_state.temp_name = reg_name
+                                st.session_state.temp_phone = reg_phone
+                                st.session_state.temp_email = reg_email
+                                st.session_state.temp_country = reg_country.split(' ', 1)[1]
+                                send_otp(reg_phone)
+                        else:
+                            st.warning("⚠️ Fill all required fields")
+                else:
+                    # OTP verification
+                    st.success(f"OTP sent to {st.session_state.otp_phone}")
+                    otp_code = st.text_input("Enter 6-digit OTP", max_chars=6, key="reg_otp")
                     
                     col1, col2 = st.columns(2)
                     with col1:
-                        if st.button("🔄 Retry Now", key="retry_btn"):
-                            st.rerun()
+                        if st.button("Verify & Continue", use_container_width=True):
+                            if verify_otp(st.session_state.otp_phone, otp_code):
+                                st.session_state.registration_step = 2
+                                st.session_state.otp_sent = False
+                                st.rerun()
+                    
                     with col2:
-                        if st.button("⭐ Upgrade to Skip Waits", key="upgrade_btn"):
-                            upgrade_result = engine.upgrade_to_paid(st.session_state.phone)
-                            st.success(upgrade_result['message'])
+                        if st.button("Cancel", use_container_width=True):
+                            st.session_state.otp_sent = False
+                            st.session_state.registration_step = 1
                             st.rerun()
-                else:
-                    # Quota exceeded - show upgrade option
-                    if st.button("💎 Upgrade Now - $1/month"):
-                        upgrade_result = engine.upgrade_to_paid(st.session_state.phone)
-                        st.success(upgrade_result['message'])
+            
+            elif st.session_state.registration_step == 2:
+                # Step 2: Birth data
+                st.markdown("### Step 2: Birth Details")
+                
+                # Birth data quality selector
+                birth_quality = st.radio(
+                    "How accurate is your birth data?",
+                    options=["Exact", "Approximate", "None (Use Prashna)"],
+                    key="birth_quality"
+                )
+                
+                if birth_quality == "Exact":
+                    # Full birth details
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        dob = st.date_input(
+                            "Date of Birth*",
+                            min_value=datetime(1900, 1, 1),
+                            max_value=datetime.now(),
+                            key="reg_dob"
+                        )
+                    with col2:
+                        time_col1, time_col2 = st.columns(2)
+                        with time_col1:
+                            hour = st.number_input("Hour (0-23)", min_value=0, max_value=23, value=12, key="reg_hour")
+                        with time_col2:
+                            minute = st.number_input("Min (0-59)", min_value=0, max_value=59, value=0, key="reg_min")
+                    
+                    tob = f"{hour:02d}:{minute:02d}"
+                    
+                    # Location
+                    pob_city = st.text_input("Birth City*", key="reg_city")
+                    pob_state = st.text_input("Birth State/Region", key="reg_state")
+                    pob_country = st.text_input("Birth Country*", value=st.session_state.temp_country, key="reg_birth_country")
+                    
+                    if st.button("Complete Registration", use_container_width=True):
+                        if pob_city and pob_country:
+                            # Get coordinates and timezone
+                            coords = get_coordinates(pob_city, pob_country)
+                            if coords:
+                                # Create user
+                                user_data = {
+                                    'name': st.session_state.temp_name,
+                                    'phone': st.session_state.temp_phone,
+                                    'email': st.session_state.temp_email,
+                                    'dob': dob.strftime('%Y-%m-%d'),
+                                    'tob': tob,
+                                    'pob': f"{pob_city}, {pob_country}",
+                                    'birth_city': pob_city,
+                                    'birth_state': pob_state,
+                                    'birth_country': pob_country,
+                                    'birth_timezone': coords['timezone'],
+                                    'birth_data_quality': 'exact',
+                                    'tier': 'FREE',
+                                    'questions_limit': 7,
+                                    'otp_verified': True
+                                }
+                                
+                                engine.db.register_user(**user_data)
+                                create_session(st.session_state.temp_phone)
+                                
+                                # Clear temp data
+                                st.session_state.registration_step = 1
+                                st.session_state.show_registration = False
+                                st.success("✅ Registration complete!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Could not find location. Please check city/country.")
+                        else:
+                            st.warning("⚠️ Fill all required fields")
+                
+                elif birth_quality == "Approximate":
+                    st.info("📅 Approximate birth data mode - AI will work with ranges")
+                    
+                    year_range_start = st.number_input("Birth Year (approx start)", min_value=1900, max_value=datetime.now().year, value=1990, key="year_start")
+                    year_range_end = st.number_input("Birth Year (approx end)", min_value=1900, max_value=datetime.now().year, value=1995, key="year_end")
+                    
+                    time_of_day = st.selectbox("Time of Day", ["Morning (6-12)", "Afternoon (12-18)", "Evening (18-24)", "Night (0-6)"], key="time_of_day")
+                    
+                    pob_city = st.text_input("Birth City (if known)", key="approx_city")
+                    pob_country = st.text_input("Birth Country*", value=st.session_state.temp_country, key="approx_country")
+                    
+                    if st.button("Complete Registration", use_container_width=True):
+                        if pob_country:
+                            user_data = {
+                                'name': st.session_state.temp_name,
+                                'phone': st.session_state.temp_phone,
+                                'email': st.session_state.temp_email,
+                                'dob': f"{year_range_start}-{year_range_end}",
+                                'tob': time_of_day,
+                                'pob': f"{pob_city if pob_city else 'Unknown'}, {pob_country}",
+                                'birth_city': pob_city,
+                                'birth_country': pob_country,
+                                'birth_data_quality': 'approximate',
+                                'tier': 'FREE',
+                                'questions_limit': 7,
+                                'otp_verified': True
+                            }
+                            
+                            engine.db.register_user(**user_data)
+                            create_session(st.session_state.temp_phone)
+                            
+                            st.session_state.registration_step = 1
+                            st.session_state.show_registration = False
+                            st.success("✅ Registration complete!")
+                            st.rerun()
+                        else:
+                            st.warning("⚠️ Enter birth country")
+                
+                else:  # None
+                    st.info("🔮 Prashna mode - AI will answer based on time of question")
+                    
+                    if st.button("Complete Registration", use_container_width=True):
+                        user_data = {
+                            'name': st.session_state.temp_name,
+                            'phone': st.session_state.temp_phone,
+                            'email': st.session_state.temp_email,
+                            'birth_data_quality': 'none',
+                            'tier': 'FREE',
+                            'questions_limit': 7,
+                            'otp_verified': True
+                        }
+                        
+                        engine.db.register_user(**user_data)
+                        create_session(st.session_state.temp_phone)
+                        
+                        st.session_state.registration_step = 1
+                        st.session_state.show_registration = False
+                        st.success("✅ Registration complete!")
                         st.rerun()
 
-else:
-    # Not logged in - show welcome
+# Main content based on current page
+if st.session_state.current_page == 'sessions':
+    # Session Management Page
+    st.header("⚙️ Manage Your Sessions")
     
-    # Subtle mobile guidance
-    st.caption("📱 Mobile: Tap **>>** (top-left) to Login/Register")
-    
-    st.markdown("""
-    ## The Astro-Compass: Your 5-System Destiny Guide
-    
-    ### Why These 5 Systems?
-    
-    Unlike single-system astrology apps, we synthesize **5 ancient wisdom traditions** to give you clarity at life's crossroads:
-    
-    - 🕉️ **Vedic Astrology: The Foundation** — Soul's purpose and karmic timing
-    - 📊 **KP System: The Precision** — "Yes/No" answers with exact event timing  
-    - 🌍 **Western Astrology: The Psychology** — Personality, mental blocks, life patterns
-    - 🐉 **Chinese Astrology: The Energy Flow** — Yearly momentum via nature's cycles
-    - 🌀 **Mayan Astrology: The Universal Rhythm** — Daily energy and spiritual alignment
-    
-    ### How They Work Together For You
-    
-    By cross-checking these 5 ancient perspectives, we remove individual system bias to give you a **70%–90% Truth Consensus**. 
-    
-    **When all five systems point to the same window → it's your time to act.**
-    
-    ### What Can Astro-Compass Guide You On?
-    
-    Perfect for when you're at a **crossroads or facing paradoxical choices:**
-    
-    💍 **Marriage** — Compatibility, timing, love life  
-    💼 **Career** — Job changes, entrepreneurship, partnerships  
-    💰 **Wealth** — Financial decisions, property, investments  
-    👨‍👩‍👧 **Family** — Children's futures, parents' health, harmony  
-    🎯 **Life Purpose** — Finding your path, natural talents  
-    🏖️ **Retirement** — Planning your next chapter  
-    🧠 **Personal Growth** — Understanding traits, attitudes, patterns  
-    
-    ### Try It Free
-    
-    ✨ **15 free questions** to explore your destiny  
-    💬 **Instant AI responses** in your language  
-    🌍 **70+ countries, 25+ languages** supported
-    
-    📊 **Note:** Free tier has limited daily capacity. If the system is busy, consider upgrading for priority access.
-    
-    ### Upgrade Anytime
-    
-    **💎 $1/month** — Unlimited questions + full chat history  
-    **🔮 $5/month** — Premium systems + palmistry (coming soon)  
-    **👑 $50/month** — VIP insights + weekly forecasts
-    """)
-    
-    # Upgrade buttons
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("💎 Upgrade to $1/month", use_container_width=True, type="primary"):
-            st.info("👈 Please login first to upgrade")
-    with col2:
-        if st.button("🔮 Upgrade to $5/month", use_container_width=True):
-            st.info("👈 Please login first to upgrade")
-    with col3:
-        if st.button("👑 Upgrade to $50/month", use_container_width=True):
-            st.info("👈 Please login first to upgrade")
-    
-    st.markdown("---")
-    st.markdown("**👈 Login or Register in the sidebar to begin**")
-    
-    # Sample testimonials
-    with st.expander("See what users are saying"):
+    if st.session_state.phone:
+        user = engine.db.get_user(st.session_state.phone)
+        user_sessions = session_manager.get_user_sessions(st.session_state.phone)
+        
+        tier = user.get('tier', 'FREE')
+        if tier == 'FREE':
+            max_devices = 1
+        elif tier == 'PAID':
+            max_devices = 2
+        elif tier == 'PREMIUM':
+            max_devices = 3
+        else:
+            max_devices = float('inf')
+        
+        device_text = "Unlimited" if max_devices == float('inf') else str(max_devices)
+        st.info(f"**Your Plan:** {tier} - Up to {device_text} devices")
+        
+        st.divider()
+        
+        if user_sessions:
+            st.subheader(f"Active Sessions ({len(user_sessions)})")
+            
+            for idx, session in enumerate(user_sessions, 1):
+                with st.expander(f"📱 Device {idx} - {session['device_info']['browser']} on {session['device_info']['os']}"):
+                    st.write(f"**Last Active:** {session['last_activity']}")
+                    st.write(f"**Created:** {session['created_at']}")
+                    
+                    is_current = session['session_token'] == st.session_state.session_token
+                    if is_current:
+                        st.success("✅ Current Device")
+                    else:
+                        if st.button(f"Logout Device {idx}", key=f"logout_{idx}"):
+                            session_manager.logout_session(session['session_token'])
+                            st.success(f"✅ Device {idx} logged out")
+                            st.rerun()
+        else:
+            st.info("No active sessions found")
+        
+        if tier != 'VIP' and len(user_sessions) >= max_devices:
+            st.warning(f"⚠️ You've reached your device limit ({max_devices})")
+            st.info("💎 Upgrade to VIP for unlimited devices!")
+
+elif st.session_state.current_page == 'main':
+    # Main Chat Interface
+    if not st.session_state.phone:
+        # Welcome screen
         st.markdown("""
-        > "The 5-system consensus gave me clarity when I was stuck at a career crossroads. The timing was remarkably accurate!" 
-        > 
-        > — **Priya Sharma**, Bangalore 🇮🇳
+        ### 🌟 Welcome to Astro Compass
         
-        ---
+        **Your Personal Cosmic Guide powered by AI + Ancient Wisdom**
         
-        > "मैंने कई ज्योतिषियों से परामर्श लिया, लेकिन यह AI सिस्टम सबसे सटीक निकला। मेरी शादी की तारीख बिल्कुल सही थी!"
-        > 
-        > (I consulted many astrologers, but this AI system was most accurate. My marriage timing was spot on!)
-        > 
-        > — **Rajesh Kumar**, Mumbai 🇮🇳
+        #### ✨ What Makes Us Different?
         
-        ---
+        - **5-System Consensus**: We combine Vedic, KP, Western, Chinese & Mayan astrology
+        - **70-90% Accuracy**: Multi-system validation ensures reliable insights
+        - **No Birth Data? No Problem!**: Prashna astrology works without birth details
+        - **Forever Login**: Stay signed in across all your devices
+        - **7 Free Questions**: Start exploring immediately!
         
-        > "என் தொழில் மாற்றத்திற்கு சரியான நேரத்தை இது துல்லியமாக கணித்தது. நம்பமுடியாத அளவுக்கு பயனுள்ளதாக இருந்தது!"
-        > 
-        > (It accurately predicted the right time for my career change. Incredibly useful!)
-        > 
-        > — **Lakshmi Devi**, Chennai 🇮🇳
+        #### 🎁 Free Tier (7 Questions)
+        Perfect for trying out the service
         
-        ---
-        
-        > "أستخدمه قبل كل قرار مهم في العمل. التوقعات دقيقة بشكل مدهش!"
-        > 
-        > (I use it before every important business decision. Predictions are surprisingly accurate!)
-        > 
-        > — **Ahmed Al-Rashid**, Dubai 🇦🇪
-        
-        ---
-        
-        > "Five systems working together give me way more confidence than single astrology apps. Worth every dollar!"
-        > 
-        > — **Michael Chen**, Singapore 🇸🇬
-        
-        ---
-        
-        > "मेरे व्यापार विस्तार का सही समय बताया। बहुत फायदेमंद साबित हुआ!"
-        > 
-        > (It showed the right time for my business expansion. Very beneficial!)
-        > 
-        > — **Sunita Patel**, Ahmedabad 🇮🇳
-        
-        ---
-        
-        > "J'étais sceptique au début, mais les prédictions m'ont aidé à éviter une mauvaise décision d'investissement."
-        > 
-        > (I was skeptical at first, but predictions helped me avoid a bad investment decision.)
-        > 
-        > — **Sophie Laurent**, Paris 🇫🇷
-        
-        ---
-        
-        > "A combinação de 5 sistemas dá muito mais confiança. Recomendo!"
-        > 
-        > (The combination of 5 systems gives much more confidence. I recommend it!)
-        > 
-        > — **Carlos Silva**, São Paulo 🇧🇷
-        
-        ---
-        
-        > "The consensus approach is genius. When all 5 systems agree, I know I'm on the right path."
-        > 
-        > — **Sarah Johnson**, New York 🇺🇸
-        
-        ---
-        
-        > "నా కొడుకు పెళ్లి ముహూర్తం ఇది చెప్పింది. చాలా బాగుంది!"
-        > 
-        > (It told my son's marriage timing. Very good!)
-        > 
-        > — **Venkatesh Reddy**, Hyderabad 🇮🇳
+        #### 💎 Premium Tiers
         """)
+        
+        with st.expander("📊 View All Plans"):
+            st.markdown("""
+            | Feature | FREE | PAID ($1) | PREMIUM ($5) | VIP ($50) |
+            |---------|------|-----------|--------------|-----------|
+            | Questions | 7 | 100 | 500 | Unlimited |
+            | Devices | 1 | 2 | 3 | Unlimited |
+            | AI Systems | 5 core | 5 core + 6 | All 16 | All 16 + Priority |
+            | Birth Rectification | ❌ | ✅ | ✅ | ✅ Advanced |
+            | Prashna/Palmistry | ❌ | ✅ | ✅ | ✅ Enhanced |
+            | Response Depth | Basic | Detailed | Comprehensive | Ultra-Detailed |
+            | Weekly Forecasts | ❌ | ❌ | ✅ | ✅ Daily |
+            | Priority Support | ❌ | ❌ | ❌ | ✅ 24/7 |
+            """)
+        
+        st.markdown("""
+        ### 🚀 Get Started
+        
+        👈 **Login or Register** in the sidebar to begin your cosmic journey!
+        """)
+    
+    else:
+        # Logged in - show chat interface
+        user = engine.db.get_user(st.session_state.phone)
+        
+        # Check quota
+        if not engine.db.can_ask_question(st.session_state.phone):
+            st.error("❌ You've reached your question limit!")
+            st.info("💎 Upgrade your plan to ask more questions")
+            
+            if st.button("Upgrade Now"):
+                st.info("💳 Payment integration coming soon!")
+        else:
+            # Suggested questions
+            if not st.session_state.chat_history:
+                st.markdown("### 💫 Suggested Questions")
+                
+                suggestions = [
+                    "What does my birth chart say about my career?",
+                    "When is a good time for important decisions?",
+                    "What are my karmic lessons in this lifetime?",
+                    "How can I improve my relationships?",
+                    "What is my life purpose according to my chart?"
+                ]
+                
+                cols = st.columns(2)
+                for idx, suggestion in enumerate(suggestions):
+                    with cols[idx % 2]:
+                        if st.button(suggestion, key=f"sug_{idx}", use_container_width=True):
+                            st.session_state.chat_history.append({"role": "user", "content": suggestion})
+                            st.rerun()
+            
+            # Chat history
+            for msg in st.session_state.chat_history:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+            
+            # Chat input
+            if prompt := st.chat_input("Ask your question..."):
+                # Add user message
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                
+                # Get AI response
+                with st.chat_message("assistant"):
+                    with st.spinner("Consulting the cosmos..."):
+                        response = engine.get_prediction(
+                            user_data=user,
+                            question=prompt
+                        )
+                        st.markdown(response)
+                        st.session_state.chat_history.append({"role": "assistant", "content": response})
+                
+                # Increment question count
+                engine.db.increment_question_count(st.session_state.phone)
+                st.rerun()
 
 # Footer
 st.divider()
-st.caption("Built with ❤️ • Powered by Gemini AI • Your data is private & secure")
+st.caption("🧭 Astro Compass • Powered by AI + Ancient Wisdom • Made with ❤️ in India")
