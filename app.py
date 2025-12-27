@@ -233,17 +233,17 @@ with st.sidebar:
             st.divider()
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("🏠 Home", use_container_width=True):
+                if st.button("🏠 Home", use_container_width=True, key="nav_home"):
                     st.session_state.current_page = 'main'
                     st.rerun()
             with col2:
-                if st.button("⚙️ Sessions", use_container_width=True):
+                if st.button("⚙️ Sessions", use_container_width=True, key="nav_sessions"):
                     st.session_state.current_page = 'sessions'
                     st.rerun()
             
             # Logout button
             st.divider()
-            if st.button("🚪 Logout", use_container_width=True, type="secondary"):
+            if st.button("🚪 Logout", use_container_width=True, type="secondary", key="btn_logout"):
                 logout()
     
     else:
@@ -273,7 +273,7 @@ with st.sidebar:
                 
                 phone_input = f"{login_code}{phone_only}" if phone_only else ""
                 
-                if st.button("Send OTP", use_container_width=True):
+                if st.button("Send OTP", use_container_width=True, key="login_send_otp"):
                     if phone_input:
                         user = engine.db.get_user(phone_input)
                         if user:
@@ -291,14 +291,14 @@ with st.sidebar:
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("Verify", use_container_width=True):
+                    if st.button("Verify", use_container_width=True, key="login_verify"):
                         if verify_otp(st.session_state.otp_phone, otp_code):
                             create_session(st.session_state.otp_phone)
                             st.session_state.otp_sent = False
                             st.rerun()
                 
                 with col2:
-                    if st.button("Cancel", use_container_width=True):
+                    if st.button("Cancel", use_container_width=True, key="login_cancel"):
                         st.session_state.otp_sent = False
                         st.session_state.otp_phone = None
                         st.rerun()
@@ -325,7 +325,7 @@ with st.sidebar:
                 reg_phone = f"{reg_code}{reg_phone_only}" if reg_phone_only else ""
                 
                 if not st.session_state.otp_sent:
-                    if st.button("Send OTP", use_container_width=True):
+                    if st.button("Send OTP", use_container_width=True, key="reg_send_otp"):
                         if reg_name and reg_phone:
                             # Check if user exists
                             existing = engine.db.get_user(reg_phone)
@@ -347,14 +347,14 @@ with st.sidebar:
                     
                     col1, col2 = st.columns(2)
                     with col1:
-                        if st.button("Verify & Continue", use_container_width=True):
+                        if st.button("Verify & Continue", use_container_width=True, key="reg_verify"):
                             if verify_otp(st.session_state.otp_phone, otp_code):
                                 st.session_state.registration_step = 2
                                 st.session_state.otp_sent = False
                                 st.rerun()
                     
                     with col2:
-                        if st.button("Cancel", use_container_width=True):
+                        if st.button("Cancel", use_container_width=True, key="reg_cancel"):
                             st.session_state.otp_sent = False
                             st.session_state.registration_step = 1
                             st.rerun()
@@ -394,7 +394,7 @@ with st.sidebar:
                     pob_state = st.text_input("Birth State/Region", key="reg_state")
                     pob_country = st.text_input("Birth Country*", value=st.session_state.temp_country, key="reg_birth_country")
                     
-                    if st.button("Complete Registration", use_container_width=True):
+                    if st.button("Complete Registration", use_container_width=True, key="reg_complete_exact"):
                         if pob_city and pob_country:
                             # Get coordinates and timezone
                             coords = get_coordinates(pob_city, pob_country)
@@ -441,7 +441,7 @@ with st.sidebar:
                     pob_city = st.text_input("Birth City (if known)", key="approx_city")
                     pob_country = st.text_input("Birth Country*", value=st.session_state.temp_country, key="approx_country")
                     
-                    if st.button("Complete Registration", use_container_width=True):
+                    if st.button("Complete Registration", use_container_width=True, key="reg_complete_approx"):
                         if pob_country:
                             user_data = {
                                 'name': st.session_state.temp_name,
@@ -471,7 +471,7 @@ with st.sidebar:
                 else:  # None
                     st.info("🔮 Prashna mode - AI will answer based on time of question")
                     
-                    if st.button("Complete Registration", use_container_width=True):
+                    if st.button("Complete Registration", use_container_width=True, key="reg_complete_none"):
                         user_data = {
                             'name': st.session_state.temp_name,
                             'phone': st.session_state.temp_phone,
@@ -589,7 +589,7 @@ elif st.session_state.current_page == 'main':
             st.error("❌ You've reached your question limit!")
             st.info("💎 Upgrade your plan to ask more questions")
             
-            if st.button("Upgrade Now"):
+            if st.button("Upgrade Now", key="upgrade_button"):
                 st.info("💳 Payment integration coming soon!")
         else:
             # Suggested questions
