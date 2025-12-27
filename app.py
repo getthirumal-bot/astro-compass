@@ -208,25 +208,31 @@ if 'temp_reg_data' not in st.session_state:
 # Helper functions for OTP and sessions
 def send_otp(phone):
     """Send OTP to phone number"""
-    result = otp_service.send_otp(phone)
-    if result['success']:
+    # Extract country code from phone (everything before the main number)
+    # For +919876543210, country_code is +91
+    country_code = phone[:3] if phone.startswith('+91') else phone[:2]
+    
+    result = otp_service.send_otp(phone, country_code)
+    success, message, dev_otp = result
+    
+    if success:
         st.session_state.otp_sent = True
         st.session_state.otp_phone = phone
-        st.success(f"✅ OTP sent to {phone}")
-        if result.get('dev_otp'):
-            st.info(f"🔧 DEV MODE: Your OTP is **{result['dev_otp']}**")
+        st.success(f"✅ {message}")
+        if dev_otp:
+            st.info(f"🔧 DEV MODE: Your OTP is **{dev_otp}**")
         return True
     else:
-        st.error(f"❌ {result['message']}")
+        st.error(f"❌ {message}")
         return False
 
 def verify_otp(phone, otp_code):
     """Verify OTP code"""
-    result = otp_service.verify_otp(phone, otp_code)
-    if result['success']:
+    success, message = otp_service.verify_otp(phone, otp_code)
+    if success:
         return True
     else:
-        st.error(f"❌ {result['message']}")
+        st.error(f"❌ {message}")
         return False
 
 def create_session(phone):
@@ -851,13 +857,13 @@ else:
     # Upgrade buttons
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("💎 Upgrade to $1/month", use_container_width=True, type="primary"):
+        if st.button("💎 Upgrade to $1/month", use_container_width=True, type="primary", key="upgrade_1_welcome"):
             st.info("👈 Please login first to upgrade")
     with col2:
-        if st.button("🔮 Upgrade to $5/month", use_container_width=True):
+        if st.button("🔮 Upgrade to $5/month", use_container_width=True, key="upgrade_5_welcome"):
             st.info("👈 Please login first to upgrade")
     with col3:
-        if st.button("👑 Upgrade to $50/month", use_container_width=True):
+        if st.button("👑 Upgrade to $50/month", use_container_width=True, key="upgrade_50_welcome"):
             st.info("👈 Please login first to upgrade")
     
     st.markdown("---")
