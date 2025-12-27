@@ -304,7 +304,8 @@ with st.sidebar:
         phone_input = f"{login_code}{phone_only}" if phone_only else ""
         
         # OTP Login Flow
-        if not st.session_state.otp_sent or st.session_state.otp_phone != phone_input:
+        if not st.session_state.otp_sent:
+            # Step 1: Send OTP
             col1, col2 = st.columns(2)
             
             with col1:
@@ -312,7 +313,8 @@ with st.sidebar:
                     if phone_input:
                         user = engine.db.get_user(phone_input)
                         if user:
-                            send_otp(phone_input)
+                            if send_otp(phone_input):
+                                st.rerun()
                         else:
                             st.error("User not found. Please register.")
                     else:
@@ -865,6 +867,30 @@ else:
     with col3:
         if st.button("👑 Upgrade to $50/month", use_container_width=True, key="upgrade_50_welcome"):
             st.info("👈 Please login first to upgrade")
+    
+    # Plan Comparison Expander
+    with st.expander("🔍 Compare All Plans - See Full Details"):
+        st.markdown("""
+        | Feature | FREE | PAID ($1/mo) | PREMIUM ($5/mo) | VIP ($50/mo) |
+        |---------|------|--------------|-----------------|--------------|
+        | **Questions** | 7 total | Unlimited | Unlimited | Unlimited |
+        | **Devices** | 1 | 2 | 3 | Unlimited |
+        | **Core Systems** | 5 systems | 5 systems | 5 systems | 5 systems |
+        | **Additional Systems** | ❌ | 6 systems | 11 systems | All 16 systems |
+        | **Response Depth** | Basic | Detailed | Comprehensive | Ultra-detailed |
+        | **Chat History** | Session only | Full history | Full history | Full history |
+        | **Prashna Astrology** | ❌ | ✅ | ✅ | ✅ Enhanced |
+        | **Birth Time Rectification** | ❌ | ❌ | ✅ | ✅ Advanced |
+        | **Palmistry** | ❌ | ❌ | ✅ (upcoming) | ✅ (upcoming) |
+        | **Weekly Forecasts** | ❌ | ❌ | ❌ | ✅ |
+        | **Real-time Alerts** | ❌ | ❌ | ❌ | ✅ |
+        | **Priority Support** | ❌ | ❌ | ❌ | ✅ <1 hour |
+        | **PDF Reports** | ❌ | ❌ | ❌ | ✅ |
+        | **API Access** | ❌ | ❌ | ❌ | ✅ (upcoming) |
+        | **Best For** | Trying it out | Regular users | Serious seekers | Professionals |
+        
+        **💡 Tip:** Start FREE, upgrade anytime as your needs grow!
+        """)
     
     st.markdown("---")
     st.markdown("**👈 Login or Register in the sidebar to begin**")
