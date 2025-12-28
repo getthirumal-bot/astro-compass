@@ -411,8 +411,8 @@ with st.sidebar:
                     tob = f"{hour:02d}:{minute:02d}"
                 
                 # Place details
-                place_city = st.text_input("City*", placeholder="Hyderabad")
-                place_state = st.text_input("State/Province (optional)", placeholder="Telangana")
+                place_city = st.text_input("Birth City*", placeholder="Hyderabad")
+                place_state = st.text_input("Birth State/Province (optional)", placeholder="Telangana")
                 
                 # Language selection
                 preferred_language = st.selectbox(
@@ -731,8 +731,30 @@ if st.session_state.phone:
         
         # Get AI response
         with st.chat_message("assistant"):
+            # Visual progress showing 5-system analysis
             progress_placeholder = st.empty()
-            progress_placeholder.progress(0.5, text="🔮 Consulting the cosmos...")
+            
+            steps = [
+                ("🔮 Analyzing your cosmic blueprint...", 0),
+                ("✓ Loading birth chart data", 10),
+                ("⏳ Consulting Vedic Astrology...", 20),
+                ("⏳ Cross-checking KP System...", 35),
+                ("⏳ Analyzing Western perspective...", 50),
+                ("⏳ Interpreting Chinese elements...", 65),
+                ("⏳ Decoding Mayan calendar...", 80),
+                ("⏳ Synthesizing 5-system consensus...", 90),
+                ("⏳ Generating personalized insights...", 95),
+            ]
+            
+            import time
+            
+            # Show each step briefly before calling API
+            for step_text, progress_value in steps[:-2]:  # Show first 7 steps (quick)
+                progress_placeholder.progress(progress_value / 100, text=step_text)
+                time.sleep(0.3)  # 300ms per step = ~2 seconds total
+            
+            # Show "synthesizing" while actual API call happens
+            progress_placeholder.progress(0.90, text="⏳ Synthesizing 5-system consensus...")
             
             result = engine.ask_question(
                 st.session_state.phone,
@@ -740,6 +762,13 @@ if st.session_state.phone:
                 conversation_history=st.session_state.chat_history
             )
             
+            # Final step
+            progress_placeholder.progress(0.95, text="⏳ Generating personalized insights...")
+            time.sleep(0.2)
+            progress_placeholder.progress(1.0, text="✅ Analysis complete!")
+            time.sleep(0.3)
+            
+            # Clear progress
             progress_placeholder.empty()
             
             if result['success']:
@@ -766,18 +795,45 @@ if st.session_state.phone:
         
         # Get AI response
         with st.chat_message("assistant"):
-            # Simple progress bar
+            # Visual progress showing 5-system analysis
             progress_placeholder = st.empty()
-            progress_placeholder.progress(0.5, text="🔮 Consulting the cosmos...")
             
-            # Get AI response
+            steps = [
+                ("🔮 Analyzing your cosmic blueprint...", 0),
+                ("✓ Loading birth chart data", 10),
+                ("⏳ Consulting Vedic Astrology...", 20),
+                ("⏳ Cross-checking KP System...", 35),
+                ("⏳ Analyzing Western perspective...", 50),
+                ("⏳ Interpreting Chinese elements...", 65),
+                ("⏳ Decoding Mayan calendar...", 80),
+                ("⏳ Synthesizing 5-system consensus...", 90),
+                ("⏳ Generating personalized insights...", 95),
+            ]
+            
+            import time
+            
+            # Show each step briefly before calling API
+            for step_text, progress_value in steps[:-2]:  # Show first 7 steps (quick)
+                progress_placeholder.progress(progress_value / 100, text=step_text)
+                time.sleep(0.3)  # 300ms per step = ~2 seconds total
+            
+            # Show "synthesizing" while actual API call happens
+            progress_placeholder.progress(0.90, text="⏳ Synthesizing 5-system consensus...")
+            
             result = engine.ask_question(
                 st.session_state.phone,
                 prompt,
                 conversation_history=st.session_state.chat_history
             )
             
-            # Clear progress
+            # Final step
+            progress_placeholder.progress(0.95, text="⏳ Generating personalized insights...")
+            time.sleep(0.2)
+            progress_placeholder.progress(1.0, text="✅ Analysis complete!")
+            time.sleep(0.3)
+            
+            # Clear progress and show response
+            progress_placeholder.empty()
             progress_placeholder.empty()
             
             # Display result
