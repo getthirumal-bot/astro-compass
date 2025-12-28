@@ -635,10 +635,10 @@ with st.sidebar:
         st.subheader("Your Stats")
         
         if user['subscription'] == 'FREE':
-            remaining = 7 - user['lifetime_questions']
+            remaining = 7 - user.get('lifetime_questions', 0)
             st.metric("Questions Left", f"{remaining}/7")
             
-            progress = user['lifetime_questions'] / 7
+            progress = user.get('lifetime_questions', 0) / 7
             st.progress(progress)
             
             if remaining <= 3:
@@ -691,9 +691,9 @@ if st.session_state.phone:
         
         with col3:
             if st.button("👨‍👩‍👧 Family", use_container_width=True, key="btn_family"):
-                suggested_q = "What guidance for my children and family harmony?"
+                suggested_q = "What guidance do you have for my family harmony?"
             if st.button("👶 Children", use_container_width=True, key="btn_children"):
-                suggested_q = "When is the best time for me to have children?"
+                suggested_q = "What guidance do you have regarding children?"
         
         with col4:
             if st.button("🎯 Purpose", use_container_width=True, key="btn_purpose"):
@@ -773,7 +773,34 @@ if st.session_state.phone:
             
             if result['success']:
                 response = result['response']
-                st.markdown(response)
+                
+                # Extract follow-up options (format: • [Option text])
+                import re
+                follow_up_pattern = r'•\s*\[([^\]]+)\]'
+                follow_ups = re.findall(follow_up_pattern, response)
+                
+                # Remove follow-up section from main response for cleaner display
+                if follow_ups:
+                    split_pattern = r'\*\*What would you like.*?\*\*\n'
+                    parts = re.split(split_pattern, response, maxsplit=1)
+                    main_response = parts[0].strip()
+                else:
+                    main_response = response
+                
+                # Display main response
+                st.markdown(main_response)
+                
+                # Display follow-up buttons if found
+                if follow_ups and len(follow_ups) >= 2:
+                    st.markdown("---")
+                    st.markdown("**💡 What would you like to explore next?**")
+                    
+                    cols = st.columns(len(follow_ups))
+                    for idx, (col, option) in enumerate(zip(cols, follow_ups)):
+                        with col:
+                            if st.button(option, key=f"followup_sugg_{idx}_{len(st.session_state.chat_history)}", use_container_width=True):
+                                st.session_state.pending_question = option
+                                st.rerun()
                 
                 st.session_state.chat_history.append({
                     "role": "assistant",
@@ -840,7 +867,36 @@ if st.session_state.phone:
             
             if result['success']:
                 response = result['response']
-                st.markdown(response)
+                
+                # Extract follow-up options (format: • [Option text])
+                import re
+                follow_up_pattern = r'•\s*\[([^\]]+)\]'
+                follow_ups = re.findall(follow_up_pattern, response)
+                
+                # Remove follow-up section from main response for cleaner display
+                if follow_ups:
+                    # Find where follow-ups start (usually after "What would you like to explore")
+                    split_pattern = r'\*\*What would you like.*?\*\*\n'
+                    parts = re.split(split_pattern, response, maxsplit=1)
+                    main_response = parts[0].strip()
+                else:
+                    main_response = response
+                
+                # Display main response
+                st.markdown(main_response)
+                
+                # Display follow-up buttons if found
+                if follow_ups and len(follow_ups) >= 2:
+                    st.markdown("---")
+                    st.markdown("**💡 What would you like to explore next?**")
+                    
+                    cols = st.columns(len(follow_ups))
+                    for idx, (col, option) in enumerate(zip(cols, follow_ups)):
+                        with col:
+                            if st.button(option, key=f"followup_{idx}_{len(st.session_state.chat_history)}", use_container_width=True):
+                                # Submit this as next question
+                                st.session_state.pending_question = option
+                                st.rerun()
                 
                 # Add to chat history
                 st.session_state.chat_history.append({
@@ -916,47 +972,136 @@ else:
     
     📊 **Note:** Free tier has limited daily capacity. If the system is busy, consider upgrading for priority access.
     
-    ### Upgrade Anytime
+    ### Choose Your Plan
     
-    **💎 $1/month** — Unlimited questions + full chat history  
-    **🔮 $5/month** — Premium systems + palmistry (coming soon)  
-    **👑 $50/month** — VIP insights + weekly forecasts
     """)
     
-    # Upgrade buttons
+    # Pricing cards with visual comparisons
     col1, col2, col3 = st.columns(3)
+    
     with col1:
-        if st.button("💎 Upgrade to $1/month", use_container_width=True, type="primary", key="upgrade_1_welcome"):
-            st.info("👈 Please login first to upgrade")
-    with col2:
-        if st.button("🔮 Upgrade to $5/month", use_container_width=True, key="upgrade_5_welcome"):
-            st.info("👈 Please login first to upgrade")
-    with col3:
-        if st.button("👑 Upgrade to $50/month", use_container_width=True, key="upgrade_50_welcome"):
+        st.markdown("""
+        #### 💎 BASIC
+        **₹99/month** (India)  
+        **$2/month** (International)
+        
+        ✓ Unlimited questions  
+        ✓ 1 birth chart  
+        ✓ 2 devices  
+        ✓ 5 core systems
+        
+        ---
+        **Worth it?**  
+        ☕ Less than 3 coffees!
+        """)
+        if st.button("Start BASIC", use_container_width=True, key="upgrade_basic_welcome"):
             st.info("👈 Please login first to upgrade")
     
-    # Plan Comparison Expander
-    with st.expander("🔍 Compare All Plans - See Full Details"):
+    with col2:
         st.markdown("""
-        | Feature | FREE | PAID ($1/mo) | PREMIUM ($5/mo) | VIP ($50/mo) |
-        |---------|------|--------------|-----------------|--------------|
-        | **Questions** | 7 total | Unlimited | Unlimited | Unlimited |
+        #### 💖 FAMILY ⭐ Popular
+        **₹499/month** (India)  
+        **$8/month** (International)
+        
+        ✓ Unlimited questions  
+        ✓ **8 birth charts** 👨‍👩‍👧‍👦  
+        ✓ 3 devices  
+        ✓ All 16 systems
+        
+        ---
+        **Worth it?**  
+        🍕 **Price of 1 pizza**  
+        ☕ **₹62/person** = 1 chai/day!  
+        💫 **$1/person** = Best value!
+        """)
+        if st.button("Get FAMILY Plan", use_container_width=True, type="primary", key="upgrade_family_welcome"):
+            st.info("👈 Please login first to upgrade")
+    
+    with col3:
+        st.markdown("""
+        #### 👑 VIP
+        **₹4,000/month** (India)  
+        **$40/month** (International)
+        
+        ✓ Unlimited questions  
+        ✓ **Unlimited charts**  
+        ✓ Unlimited devices  
+        ✓ Priority support  
+        ✓ Weekly forecasts
+        
+        ---
+        **For Professionals:**  
+        🔮 Astrologers  
+        💼 Consultants  
+        💒 Marriage bureaus
+        """)
+        if st.button("Go VIP", use_container_width=True, key="upgrade_vip_welcome"):
+            st.info("👈 Please login first to upgrade")
+    
+    st.markdown("---")
+    
+    # Value comparison section
+    st.markdown("""
+    ### 💰 Why FAMILY Plan is Amazing Value
+    """)
+    
+    comp_col1, comp_col2 = st.columns(2)
+    
+    with comp_col1:
+        st.markdown("""
+        #### 🇮🇳 For India (₹499/month)
+        
+        🍕 **1 Domino's Pizza** = ₹500  
+        🎬 **1 Movie Ticket** = ₹350  
+        ☕ **3 Starbucks Chai** = ₹330  
+        
+        **vs**
+        
+        💎 **FAMILY Plan** = ₹499  
+        👨‍👩‍👧‍👦 **8 family members**  
+        ⚡ **Unlimited questions**  
+        
+        **Just ₹62/person = 1 chai per day!** ☕→⭐
+        """)
+    
+    with comp_col2:
+        st.markdown("""
+        #### 🌍 International ($8/month)
+        
+        ☕ **2 Starbucks Lattes** = $10  
+        🍿 **1 Movie Ticket** = $15  
+        🍔 **1 Fast Food Meal** = $12  
+        
+        **vs**
+        
+        💎 **FAMILY Plan** = $8  
+        👨‍👩‍👧‍👦 **8 family members**  
+        ⚡ **Unlimited questions**  
+        
+        **Just $1/person!** Skip 2 coffees → Get a month of clarity! ☕→🔮
+        """)
+    
+    st.markdown("""
+        | Feature | FREE | BASIC | FAMILY | VIP |
+        |---------|------|-------|--------|-----|
+        | **India Price** | ₹0 | **₹99/mo** | **₹499/mo** | **₹4,000/mo** |
+        | **Intl Price** | $0 | **$2/mo** | **$8/mo** | **$40/mo** |
+        | **Questions** | 7 total | **Unlimited** | **Unlimited** | **Unlimited** |
+        | **Birth Charts** | 1 person | 1 person | **8 people** 👨‍👩‍👧‍👦 | **Unlimited** |
+        | **Per Person (India)** | - | ₹99 | **₹62** ⭐ | - |
+        | **Per Person (Intl)** | - | $2 | **$1** ⭐ | - |
         | **Devices** | 1 | 2 | 3 | Unlimited |
-        | **Core Systems** | 5 systems | 5 systems | 5 systems | 5 systems |
-        | **Additional Systems** | ❌ | 6 systems | 11 systems | All 16 systems |
+        | **Systems** | 5 core | 5 core | All 16 | All 16 + Priority |
         | **Response Depth** | Basic | Detailed | Comprehensive | Ultra-detailed |
         | **Chat History** | Session only | Full history | Full history | Full history |
-        | **Prashna Astrology** | ❌ | ✅ | ✅ | ✅ Enhanced |
-        | **Birth Time Rectification** | ❌ | ❌ | ✅ | ✅ Advanced |
-        | **Palmistry** | ❌ | ❌ | ✅ (upcoming) | ✅ (upcoming) |
+        | **Birth Rectification** | ❌ | ❌ | ✅ | ✅ Advanced |
+        | **Prashna Astrology** | ❌ | ✅ | ✅ Enhanced | ✅ Enhanced |
         | **Weekly Forecasts** | ❌ | ❌ | ❌ | ✅ |
-        | **Real-time Alerts** | ❌ | ❌ | ❌ | ✅ |
         | **Priority Support** | ❌ | ❌ | ❌ | ✅ <1 hour |
         | **PDF Reports** | ❌ | ❌ | ❌ | ✅ |
-        | **API Access** | ❌ | ❌ | ❌ | ✅ (upcoming) |
-        | **Best For** | Trying it out | Regular users | Serious seekers | Professionals |
+        | **Best For** | Trial | Individual | **Families** ⭐ | Professionals |
         
-        **💡 Tip:** Start FREE, upgrade anytime as your needs grow!
+        **💡 Tip:** Most users choose FAMILY plan - analyze your entire family for less than the price of a pizza! 🍕
         """)
     
     st.markdown("---")
