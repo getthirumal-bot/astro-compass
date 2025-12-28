@@ -992,7 +992,8 @@ else:
         
         ---
         **Worth it?**  
-        ☕ Less than 3 coffees!
+        ☕ Less than 3 coffees!  
+        &nbsp;
         """)
         if st.button("Start BASIC", use_container_width=True, key="upgrade_basic_welcome"):
             st.info("👈 Please login first to upgrade")
