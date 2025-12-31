@@ -688,8 +688,69 @@ if st.session_state.phone:
             Perfect for: Career decisions • Love & marriage • Money & investments • Life purpose • Family matters
             """)
             
+            # Generate personalized welcome insights
+            st.markdown("### 🔮 Generating your personalized insights...")
+            
+            # Progress bar for insight generation
+            insight_progress = st.empty()
+            import time
+            from datetime import datetime
+            
+            insight_steps = [
+                ("🔮 Reading your birth chart...", 25),
+                ("⏳ Analyzing current planetary transits...", 50),
+                ("⏳ Consulting 5 wisdom systems...", 75),
+                ("✅ Generating your personalized insights...", 100),
+            ]
+            
+            for step_text, progress_value in insight_steps:
+                insight_progress.progress(progress_value / 100, text=step_text)
+                time.sleep(1.5)  # 1.5s per step = 6 seconds total
+                
+                # Make API call during last step
+                if progress_value == 100:
+                    welcome_prompt = f"""Generate 3 SPECIFIC, personalized insights for this user based on:
+
+1. Their birth chart: {user.get('birth_details', {})}
+2. Current date: {datetime.now().strftime('%B %d, %Y')}
+3. Their location: {user.get('pob', 'Unknown')}
+
+Format EXACTLY as:
+
+💼 **Career:** [Specific opportunity or timing in next 2-3 months, actionable advice]
+
+💰 **Finances:** [Money/investment insight with practical action, include timing]
+
+❤️ **Relationships:** [Love/partnership insight, include timing if relevant]
+
+CRITICAL:
+- Be SPECIFIC to their chart (not generic)
+- Include TIMING (months, quarters, specific dates)
+- Be ACTIONABLE (what should they do?)
+- Keep each insight to 1-2 sentences MAX
+- NO jargon unless you explain it immediately"""
+
+                    welcome_result = engine.ask_question(
+                        st.session_state.phone,
+                        welcome_prompt,
+                        conversation_history=[]
+                    )
+            
+            insight_progress.empty()
+            
+            if welcome_result['success']:
+                insights_text = welcome_result['response']
+                
+                # Display insights in a nice box
+                st.markdown("### 💫 Your Personalized Insights Right Now:")
+                st.success(insights_text)
+                
+                st.markdown("---")
+            else:
+                st.warning("Could not generate personalized insights. Please ask a question below!")
+            
             # Ask me about any topic prompt
-            st.markdown("**👇 Pick a topic below to explore, or ask me anything!**")
+            st.markdown("**👇 Pick a topic to explore deeper, or ask me anything!**")
             st.markdown("---")
         
         # Show topic buttons for all users
@@ -800,9 +861,19 @@ if st.session_state.phone:
                 
                 # Remove follow-up section from main response for cleaner display
                 if follow_ups:
-                    split_pattern = r'\*\*What would you like.*?\*\*\n'
-                    parts = re.split(split_pattern, response, maxsplit=1)
-                    main_response = parts[0].strip()
+                    # Try multiple patterns to find where follow-ups start
+                    split_patterns = [
+                        r'\*\*What would you like.*?\*\*',
+                        r'What would you like.*?\?',
+                        r'•\s*\['  # Just split before first bullet
+                    ]
+                    
+                    main_response = response
+                    for pattern in split_patterns:
+                        parts = re.split(pattern, response, maxsplit=1)
+                        if len(parts) > 1:
+                            main_response = parts[0].strip()
+                            break
                 else:
                     main_response = response
                 
@@ -810,13 +881,17 @@ if st.session_state.phone:
                 st.markdown(main_response)
                 
                 # Display follow-up buttons if found
-                if follow_ups and len(follow_ups) >= 2:
+                if follow_ups:
                     st.markdown("---")
                     st.markdown("**💡 What would you like to explore next?**")
                     
-                    cols = st.columns(len(follow_ups))
-                    for idx, (col, option) in enumerate(zip(cols, follow_ups)):
-                        with col:
+                    # Create columns based on number of follow-ups
+                    num_cols = min(len(follow_ups), 3)  # Max 3 columns
+                    cols = st.columns(num_cols)
+                    
+                    for idx, option in enumerate(follow_ups[:3]):  # Show max 3 options
+                        col_idx = idx % num_cols
+                        with cols[col_idx]:
                             if st.button(option, key=f"followup_sugg_{idx}_{len(st.session_state.chat_history)}", use_container_width=True):
                                 st.session_state.pending_question = option
                                 st.rerun()
@@ -890,10 +965,19 @@ if st.session_state.phone:
                 
                 # Remove follow-up section from main response for cleaner display
                 if follow_ups:
-                    # Find where follow-ups start (usually after "What would you like to explore")
-                    split_pattern = r'\*\*What would you like.*?\*\*\n'
-                    parts = re.split(split_pattern, response, maxsplit=1)
-                    main_response = parts[0].strip()
+                    # Try multiple patterns to find where follow-ups start
+                    split_patterns = [
+                        r'\*\*What would you like.*?\*\*',
+                        r'What would you like.*?\?',
+                        r'•\s*\['  # Just split before first bullet
+                    ]
+                    
+                    main_response = response
+                    for pattern in split_patterns:
+                        parts = re.split(pattern, response, maxsplit=1)
+                        if len(parts) > 1:
+                            main_response = parts[0].strip()
+                            break
                 else:
                     main_response = response
                 
@@ -901,13 +985,17 @@ if st.session_state.phone:
                 st.markdown(main_response)
                 
                 # Display follow-up buttons if found
-                if follow_ups and len(follow_ups) >= 2:
+                if follow_ups:
                     st.markdown("---")
                     st.markdown("**💡 What would you like to explore next?**")
                     
-                    cols = st.columns(len(follow_ups))
-                    for idx, (col, option) in enumerate(zip(cols, follow_ups)):
-                        with col:
+                    # Create columns based on number of follow-ups
+                    num_cols = min(len(follow_ups), 3)  # Max 3 columns
+                    cols = st.columns(num_cols)
+                    
+                    for idx, option in enumerate(follow_ups[:3]):  # Show max 3 options
+                        col_idx = idx % num_cols
+                        with cols[col_idx]:
                             if st.button(option, key=f"followup_{idx}_{len(st.session_state.chat_history)}", use_container_width=True):
                                 # Submit this as next question
                                 st.session_state.pending_question = option
@@ -918,6 +1006,13 @@ if st.session_state.phone:
                     "role": "assistant",
                     "content": response
                 })
+                
+                # Auto-scroll to bottom using JavaScript
+                st.markdown("""
+                <script>
+                window.scrollTo(0, document.body.scrollHeight);
+                </script>
+                """, unsafe_allow_html=True)
             else:
                 # Error occurred
                 st.error(result['response'])
@@ -1007,9 +1102,9 @@ else:
         
         ---
         **Worth it?**  
-        ☕ Less than 3 coffees!
-        
-        
+        ☕ Less than 3 coffees!  
+        💼 Perfect for individuals  
+        ⚡ Get started today!
         """)
         if st.button("Start BASIC", use_container_width=True, key="upgrade_basic_welcome"):
             st.info("👈 Please login first to upgrade")
