@@ -411,7 +411,7 @@ with st.sidebar:
                     tob = f"{hour:02d}:{minute:02d}"
                 
                 # Place details
-                place_city = st.text_input("Birth City*", placeholder="Hyderabad")
+                place_city = st.text_input("Birth Village/Town/City*", placeholder="Hyderabad")
                 place_state = st.text_input("Birth State/Province (optional)", placeholder="Telangana")
                 
                 # Language selection
@@ -669,8 +669,30 @@ if st.session_state.phone:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
     
-    # Suggested questions for new users
+    # Welcome insights and suggested questions
     if len(st.session_state.chat_history) == 0:
+        lifetime_q = user.get('lifetime_questions', 0)
+        
+        # First-time user (never asked a question before)
+        if lifetime_q == 0:
+            st.markdown("### 👋 Welcome to Astro Compass!")
+            
+            st.info("""
+            **What is Astro Compass?**
+            
+            We analyze your birth chart using **5 ancient wisdom systems** (Vedic, KP, Western, Chinese, Mayan) 
+            to give you a **70-90% consensus** on your life's biggest questions.
+            
+            When all 5 systems agree → that's your green light! ⭐
+            
+            Perfect for: Career decisions • Love & marriage • Money & investments • Life purpose • Family matters
+            """)
+            
+            # Ask me about any topic prompt
+            st.markdown("**👇 Pick a topic below to explore, or ask me anything!**")
+            st.markdown("---")
+        
+        # Show topic buttons for all users
         st.markdown("### 💡 Quick Start - Pick a Topic:")
         
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -748,25 +770,22 @@ if st.session_state.phone:
             
             import time
             
-            # Show each step briefly before calling API
-            for step_text, progress_value in steps[:-2]:  # Show first 7 steps (quick)
+            # Show ALL steps for 2 seconds each so users can read
+            for step_text, progress_value in steps:
                 progress_placeholder.progress(progress_value / 100, text=step_text)
-                time.sleep(0.3)  # 300ms per step = ~2 seconds total
+                time.sleep(2.0)  # 2 seconds per step
+                
+                # Make API call during "synthesizing" step
+                if "Synthesizing" in step_text:
+                    result = engine.ask_question(
+                        st.session_state.phone,
+                        prompt,
+                        conversation_history=st.session_state.chat_history
+                    )
             
-            # Show "synthesizing" while actual API call happens
-            progress_placeholder.progress(0.90, text="⏳ Synthesizing 5-system consensus...")
-            
-            result = engine.ask_question(
-                st.session_state.phone,
-                prompt,
-                conversation_history=st.session_state.chat_history
-            )
-            
-            # Final step
-            progress_placeholder.progress(0.95, text="⏳ Generating personalized insights...")
-            time.sleep(0.2)
+            # Final completion
             progress_placeholder.progress(1.0, text="✅ Analysis complete!")
-            time.sleep(0.3)
+            time.sleep(0.5)
             
             # Clear progress
             progress_placeholder.empty()
@@ -839,28 +858,24 @@ if st.session_state.phone:
             
             import time
             
-            # Show each step briefly before calling API
-            for step_text, progress_value in steps[:-2]:  # Show first 7 steps (quick)
+            # Show ALL steps for 2 seconds each so users can read
+            for step_text, progress_value in steps:
                 progress_placeholder.progress(progress_value / 100, text=step_text)
-                time.sleep(0.3)  # 300ms per step = ~2 seconds total
+                time.sleep(2.0)  # 2 seconds per step
+                
+                # Make API call during "synthesizing" step
+                if "Synthesizing" in step_text:
+                    result = engine.ask_question(
+                        st.session_state.phone,
+                        prompt,
+                        conversation_history=st.session_state.chat_history
+                    )
             
-            # Show "synthesizing" while actual API call happens
-            progress_placeholder.progress(0.90, text="⏳ Synthesizing 5-system consensus...")
-            
-            result = engine.ask_question(
-                st.session_state.phone,
-                prompt,
-                conversation_history=st.session_state.chat_history
-            )
-            
-            # Final step
-            progress_placeholder.progress(0.95, text="⏳ Generating personalized insights...")
-            time.sleep(0.2)
+            # Final completion
             progress_placeholder.progress(1.0, text="✅ Analysis complete!")
-            time.sleep(0.3)
+            time.sleep(0.5)
             
             # Clear progress and show response
-            progress_placeholder.empty()
             progress_placeholder.empty()
             
             # Display result
@@ -992,8 +1007,9 @@ else:
         
         ---
         **Worth it?**  
-        ☕ Less than 3 coffees!  
-        &nbsp;
+        ☕ Less than 3 coffees!
+        
+        
         """)
         if st.button("Start BASIC", use_container_width=True, key="upgrade_basic_welcome"):
             st.info("👈 Please login first to upgrade")
