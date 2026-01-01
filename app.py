@@ -194,6 +194,8 @@ if 'phone' not in st.session_state:
     st.session_state.phone = None
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
+if 'follow_up_options' not in st.session_state:
+    st.session_state.follow_up_options = []
 if 'otp_sent' not in st.session_state:
     st.session_state.otp_sent = False
 if 'otp_phone' not in st.session_state:
@@ -674,8 +676,34 @@ if st.session_state.phone:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
     
+    # Display follow-up buttons if AI generated them (AFTER chat history)
+    # DEBUG: Check what's in session state
+    if hasattr(st.session_state, 'follow_up_options'):
+        if st.session_state.follow_up_options:
+            st.markdown("### 💡 What would you like to explore next?")
+            
+            options = st.session_state.follow_up_options
+            num_cols = min(len(options), 3)
+            cols = st.columns(num_cols)
+            
+            follow_up_clicked = None
+            for idx, option in enumerate(options):
+                col_idx = idx % num_cols
+                with cols[col_idx]:
+                    if st.button(option, key=f"followup_{idx}", use_container_width=True):
+                        follow_up_clicked = option
+            
+            # If clicked, submit it
+            if follow_up_clicked:
+                st.session_state.pending_question = follow_up_clicked
+                st.session_state.follow_up_options = []  # Clear
+                st.rerun()
+            
+            st.markdown("---")
+    
     # Welcome insights and suggested questions
-    if len(st.session_state.chat_history) == 0:
+    # Only show if no chat history AND no pending question
+    if len(st.session_state.chat_history) == 0 and not hasattr(st.session_state, 'pending_question'):
         lifetime_q = user.get('lifetime_questions', 0)
         
         # First-time user (never asked a question before)
@@ -882,36 +910,8 @@ Keep each to ONE sentence. Be specific and practical."""
         
         st.markdown("---")
     
-    # Display follow-up buttons if AI generated them
-    if hasattr(st.session_state, 'follow_up_options') and st.session_state.follow_up_options:
-        st.markdown("### 💡 What would you like to explore next?")
-        
-        options = st.session_state.follow_up_options
-        num_cols = min(len(options), 3)
-        cols = st.columns(num_cols)
-        
-        follow_up_clicked = None
-        for idx, option in enumerate(options):
-            col_idx = idx % num_cols
-            with cols[col_idx]:
-                if st.button(option, key=f"followup_{idx}", use_container_width=True):
-                    follow_up_clicked = option
-        
-        # If clicked, submit it
-        if follow_up_clicked:
-            st.session_state.pending_question = follow_up_clicked
-            st.session_state.follow_up_options = []  # Clear
-            st.rerun()
-        
-        st.markdown("---")
-    
     # Process pending question ONCE
     if hasattr(st.session_state, 'pending_question') and st.session_state.pending_question:
-        # Show IMMEDIATE loading indicator at top level
-        with st.spinner("🔮 Analyzing your question..."):
-            import time
-            time.sleep(0.1)  # Force UI update
-        
         prompt = st.session_state.pending_question
         del st.session_state.pending_question  # Delete immediately to prevent re-processing
         
