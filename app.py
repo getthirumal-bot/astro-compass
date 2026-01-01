@@ -882,23 +882,6 @@ Keep each to ONE sentence. Be specific and practical."""
         
         st.markdown("---")
     
-    # Display follow-up buttons OUTSIDE chat messages (so they actually work)
-    if hasattr(st.session_state, 'current_followups') and st.session_state.current_followups:
-        st.markdown("### 💡 What would you like to explore next?")
-        
-        followups = st.session_state.current_followups
-        num_cols = min(len(followups), 3)
-        cols = st.columns(num_cols)
-        
-        for idx, option in enumerate(followups):
-            with cols[idx]:
-                if st.button(option, key=f"followup_btn_{idx}", use_container_width=True):
-                    st.session_state.pending_question = option
-                    st.session_state.current_followups = []  # Clear after click
-                    st.rerun()
-        
-        st.markdown("---")
-    
     # Process pending question ONCE
     if hasattr(st.session_state, 'pending_question') and st.session_state.pending_question:
         prompt = st.session_state.pending_question
@@ -947,8 +930,12 @@ Keep each to ONE sentence. Be specific and practical."""
             
             # Get AI response
             with st.chat_message("assistant"):
-                # Visual progress showing 5-system analysis
+                # Show progress IMMEDIATELY
                 progress_placeholder = st.empty()
+                progress_placeholder.progress(0, text="🔮 Analyzing your cosmic blueprint...")
+                
+                import time
+                time.sleep(0.1)  # Tiny delay to ensure UI updates
                 
                 steps = [
                     ("🔮 Analyzing your cosmic blueprint...", 0),
@@ -961,8 +948,6 @@ Keep each to ONE sentence. Be specific and practical."""
                     ("⏳ Synthesizing 5-system consensus...", 90),
                     ("⏳ Generating personalized insights...", 95),
                 ]
-                
-                import time
                 
                 # Show ALL steps for 2 seconds each so users can read
                 for step_text, progress_value in steps:
@@ -992,32 +977,12 @@ Keep each to ONE sentence. Be specific and practical."""
                     follow_up_pattern = r'•\s*\[([^\]]+)\]'
                     follow_ups = re.findall(follow_up_pattern, response)
                     
-                    # Store follow-ups in session state for rendering outside chat
-                    if follow_ups:
-                        st.session_state.current_followups = follow_ups[:3]  # Max 3
-                    else:
-                        st.session_state.current_followups = []
+                    # Display response (keep follow-ups in text for now)
+                    st.markdown(response)
                     
-                    # Remove follow-up section from main response for cleaner display
+                    # If follow-ups detected, show them as copyable text
                     if follow_ups:
-                        # Try multiple patterns to find where follow-ups start
-                        split_patterns = [
-                            r'\*\*What would you like.*?\*\*',
-                            r'What would you like.*?\?',
-                            r'•\s*\['  # Just split before first bullet
-                        ]
-                        
-                        main_response = response
-                        for pattern in split_patterns:
-                            parts = re.split(pattern, response, maxsplit=1)
-                            if len(parts) > 1:
-                                main_response = parts[0].strip()
-                                break
-                    else:
-                        main_response = response
-                    
-                    # Display main response
-                    st.markdown(main_response)
+                        st.info("💡 **Quick Tip:** Copy and paste any question above to explore deeper!")
                     
                     st.session_state.chat_history.append({
                         "role": "assistant",
@@ -1086,31 +1051,12 @@ Keep each to ONE sentence. Be specific and practical."""
                 follow_up_pattern = r'•\s*\[([^\]]+)\]'
                 follow_ups = re.findall(follow_up_pattern, response)
                 
-                # Store in session state
-                if follow_ups:
-                    st.session_state.current_followups = follow_ups[:3]
-                else:
-                    st.session_state.current_followups = []
+                # Display response (keep follow-ups in text)
+                st.markdown(response)
                 
-                # Remove follow-up section from main response
+                # Show tip if follow-ups present
                 if follow_ups:
-                    split_patterns = [
-                        r'\*\*What would you like.*?\*\*',
-                        r'What would you like.*?\?',
-                        r'•\s*\['
-                    ]
-                    
-                    main_response = response
-                    for pattern in split_patterns:
-                        parts = re.split(pattern, response, maxsplit=1)
-                        if len(parts) > 1:
-                            main_response = parts[0].strip()
-                            break
-                else:
-                    main_response = response
-                
-                # Display main response
-                st.markdown(main_response)
+                    st.info("💡 **Quick Tip:** Copy and paste any question above to explore deeper!")
                 
                 # Add to chat history
                 st.session_state.chat_history.append({
