@@ -665,6 +665,11 @@ if st.session_state.phone:
     chat_container = st.container()
     
     with chat_container:
+        # Note: Chat history is currently session-only
+        # TODO: Implement persistent chat history storage in database
+        if len(st.session_state.chat_history) > 0:
+            st.caption(f"💬 {len(st.session_state.chat_history)//2} questions in this session")
+        
         for message in st.session_state.chat_history:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
@@ -783,9 +788,26 @@ Be SPECIFIC, include TIMING, keep it brief."""
         else:
             st.markdown(f"### 👋 Welcome back, {user.get('name', 'friend')}!")
             
-            # Generate 2 brief predictions for today
+            # Show progress while generating predictions
+            st.markdown("**🔮 Generating today's cosmic insights for you...**")
+            
+            today_progress = st.empty()
+            import time
             from datetime import datetime
-            today_prompt = f"""Generate 2 BRIEF predictions for this returning user based on TODAY'S date and their chart:
+            
+            # Show quick progress
+            today_steps = [
+                ("🌟 Checking today's planetary positions...", 50),
+                ("💫 Consulting your birth chart...", 100),
+            ]
+            
+            for step_text, progress_value in today_steps:
+                today_progress.progress(progress_value / 100, text=step_text)
+                time.sleep(1.0)  # 1s per step
+                
+                # Make API call during last step
+                if progress_value == 100:
+                    today_prompt = f"""Generate 2 BRIEF predictions for this returning user based on TODAY'S date and their chart:
 
 User: {user.get('name')}
 Birth chart: {user.get('birth_details', {})}
@@ -799,11 +821,13 @@ Format EXACTLY as 2 short lines (one sentence each):
 
 Keep each to ONE sentence. Be specific and practical."""
 
-            today_result = engine.ask_question(
-                st.session_state.phone,
-                today_prompt,
-                conversation_history=[]
-            )
+                    today_result = engine.ask_question(
+                        st.session_state.phone,
+                        today_prompt,
+                        conversation_history=[]
+                    )
+            
+            today_progress.empty()
             
             if today_result['success']:
                 st.info(today_result['response'])
@@ -858,10 +882,58 @@ Keep each to ONE sentence. Be specific and practical."""
         
         st.markdown("---")
     
+    # Display follow-up buttons OUTSIDE chat messages (so they actually work)
+    if hasattr(st.session_state, 'current_followups') and st.session_state.current_followups:
+        st.markdown("### 💡 What would you like to explore next?")
+        
+        followups = st.session_state.current_followups
+        num_cols = min(len(followups), 3)
+        cols = st.columns(num_cols)
+        
+        for idx, option in enumerate(followups):
+            with cols[idx]:
+                if st.button(option, key=f"followup_btn_{idx}", use_container_width=True):
+                    st.session_state.pending_question = option
+                    st.session_state.current_followups = []  # Clear after click
+                    st.rerun()
+        
+        st.markdown("---")
+    
     # Process pending question ONCE
     if hasattr(st.session_state, 'pending_question') and st.session_state.pending_question:
         prompt = st.session_state.pending_question
         del st.session_state.pending_question  # Delete immediately to prevent re-processing
+        
+        # Check if question is about family member (requires upgrade)
+        family_keywords = ['wife', 'husband', 'spouse', 'child', 'children', 'son', 'daughter', 
+                           'mother', 'father', 'parent', 'brother', 'sister', 'sibling',
+                           'mom', 'dad', 'grandmother', 'grandfather']
+        
+        is_family_question = any(keyword in prompt.lower() for keyword in family_keywords)
+        user = engine.db.get_user(st.session_state.phone)
+        
+        if is_family_question and user.get('subscription') == 'FREE':
+            # Show upgrade prompt
+            st.warning("### 👨‍👩‍👧‍👦 Family Member Analysis")
+            st.info("""
+            To analyze family members' birth charts, you need the **FAMILY plan**.
+            
+            **FAMILY Plan Benefits:**
+            - ₹499/month (India) or $8/month (International)
+            - Analyze **8 family members**
+            - All 16 astrology systems
+            - ₹62/person = Less than 1 chai per day!
+            """)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("⭐ Upgrade to FAMILY", key="upgrade_family_prompt", use_container_width=True):
+                    st.info("Scroll down to see FAMILY plan details!")
+            with col2:
+                if st.button("📝 Ask About Myself Instead", key="ask_self", use_container_width=True):
+                    st.info("Please rephrase your question about your own chart!")
+            
+            return  # Don't process this question
         
         # Add to history
         st.session_state.chat_history.append({
@@ -920,6 +992,12 @@ Keep each to ONE sentence. Be specific and practical."""
                 follow_up_pattern = r'•\s*\[([^\]]+)\]'
                 follow_ups = re.findall(follow_up_pattern, response)
                 
+                # Store follow-ups in session state for rendering outside chat
+                if follow_ups:
+                    st.session_state.current_followups = follow_ups[:3]  # Max 3
+                else:
+                    st.session_state.current_followups = []
+                
                 # Remove follow-up section from main response for cleaner display
                 if follow_ups:
                     # Try multiple patterns to find where follow-ups start
@@ -940,26 +1018,6 @@ Keep each to ONE sentence. Be specific and practical."""
                 
                 # Display main response
                 st.markdown(main_response)
-                
-                # Display follow-up buttons if found
-                if follow_ups:
-                    st.markdown("---")
-                    st.markdown("**💡 What would you like to explore next?**")
-                    
-                    # Create columns based on number of follow-ups
-                    num_cols = min(len(follow_ups), 3)  # Max 3 columns
-                    cols = st.columns(num_cols)
-                    
-                    # Use timestamp to create stable unique keys
-                    import time
-                    button_timestamp = int(time.time() * 1000)
-                    
-                    for idx, option in enumerate(follow_ups[:3]):  # Show max 3 options
-                        col_idx = idx % num_cols
-                        with cols[col_idx]:
-                            if st.button(option, key=f"followup_sugg_{idx}_{button_timestamp}", use_container_width=True):
-                                st.session_state.pending_question = option
-                                st.rerun()
                 
                 st.session_state.chat_history.append({
                     "role": "assistant",
@@ -1028,13 +1086,18 @@ Keep each to ONE sentence. Be specific and practical."""
                 follow_up_pattern = r'•\s*\[([^\]]+)\]'
                 follow_ups = re.findall(follow_up_pattern, response)
                 
-                # Remove follow-up section from main response for cleaner display
+                # Store in session state
                 if follow_ups:
-                    # Try multiple patterns to find where follow-ups start
+                    st.session_state.current_followups = follow_ups[:3]
+                else:
+                    st.session_state.current_followups = []
+                
+                # Remove follow-up section from main response
+                if follow_ups:
                     split_patterns = [
                         r'\*\*What would you like.*?\*\*',
                         r'What would you like.*?\?',
-                        r'•\s*\['  # Just split before first bullet
+                        r'•\s*\['
                     ]
                     
                     main_response = response
@@ -1048,27 +1111,6 @@ Keep each to ONE sentence. Be specific and practical."""
                 
                 # Display main response
                 st.markdown(main_response)
-                
-                # Display follow-up buttons if found
-                if follow_ups:
-                    st.markdown("---")
-                    st.markdown("**💡 What would you like to explore next?**")
-                    
-                    # Create columns based on number of follow-ups
-                    num_cols = min(len(follow_ups), 3)  # Max 3 columns
-                    cols = st.columns(num_cols)
-                    
-                    # Use timestamp to create stable unique keys
-                    import time
-                    button_timestamp = int(time.time() * 1000)
-                    
-                    for idx, option in enumerate(follow_ups[:3]):  # Show max 3 options
-                        col_idx = idx % num_cols
-                        with cols[col_idx]:
-                            if st.button(option, key=f"followup_{idx}_{button_timestamp}", use_container_width=True):
-                                # Submit this as next question
-                                st.session_state.pending_question = option
-                                st.rerun()
                 
                 # Add to chat history
                 st.session_state.chat_history.append({
