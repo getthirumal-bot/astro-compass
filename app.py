@@ -882,8 +882,36 @@ Keep each to ONE sentence. Be specific and practical."""
         
         st.markdown("---")
     
+    # Display follow-up buttons if AI generated them
+    if hasattr(st.session_state, 'follow_up_options') and st.session_state.follow_up_options:
+        st.markdown("### 💡 What would you like to explore next?")
+        
+        options = st.session_state.follow_up_options
+        num_cols = min(len(options), 3)
+        cols = st.columns(num_cols)
+        
+        follow_up_clicked = None
+        for idx, option in enumerate(options):
+            col_idx = idx % num_cols
+            with cols[col_idx]:
+                if st.button(option, key=f"followup_{idx}", use_container_width=True):
+                    follow_up_clicked = option
+        
+        # If clicked, submit it
+        if follow_up_clicked:
+            st.session_state.pending_question = follow_up_clicked
+            st.session_state.follow_up_options = []  # Clear
+            st.rerun()
+        
+        st.markdown("---")
+    
     # Process pending question ONCE
     if hasattr(st.session_state, 'pending_question') and st.session_state.pending_question:
+        # Show IMMEDIATE loading indicator at top level
+        with st.spinner("🔮 Analyzing your question..."):
+            import time
+            time.sleep(0.1)  # Force UI update
+        
         prompt = st.session_state.pending_question
         del st.session_state.pending_question  # Delete immediately to prevent re-processing
         
@@ -977,12 +1005,19 @@ Keep each to ONE sentence. Be specific and practical."""
                     follow_up_pattern = r'•\s*\[([^\]]+)\]'
                     follow_ups = re.findall(follow_up_pattern, response)
                     
-                    # Display response (keep follow-ups in text for now)
-                    st.markdown(response)
-                    
-                    # If follow-ups detected, show them as copyable text
+                    # Store follow-ups for button display
                     if follow_ups:
-                        st.info("💡 **Quick Tip:** Copy and paste any question above to explore deeper!")
+                        st.session_state.follow_up_options = follow_ups[:3]
+                    else:
+                        st.session_state.follow_up_options = []
+                    
+                    # Remove bracketed follow-ups from main response for cleaner display
+                    clean_response = re.sub(r'•\s*\[[^\]]+\]', '', response)
+                    clean_response = re.sub(r'\*\*What would you like.*?\*\*', '', clean_response)
+                    clean_response = clean_response.strip()
+                    
+                    # Display cleaned response
+                    st.markdown(clean_response)
                     
                     st.session_state.chat_history.append({
                         "role": "assistant",
@@ -1051,12 +1086,19 @@ Keep each to ONE sentence. Be specific and practical."""
                 follow_up_pattern = r'•\s*\[([^\]]+)\]'
                 follow_ups = re.findall(follow_up_pattern, response)
                 
-                # Display response (keep follow-ups in text)
-                st.markdown(response)
-                
-                # Show tip if follow-ups present
+                # Store follow-ups for button display
                 if follow_ups:
-                    st.info("💡 **Quick Tip:** Copy and paste any question above to explore deeper!")
+                    st.session_state.follow_up_options = follow_ups[:3]
+                else:
+                    st.session_state.follow_up_options = []
+                
+                # Remove bracketed follow-ups from main response
+                clean_response = re.sub(r'•\s*\[[^\]]+\]', '', response)
+                clean_response = re.sub(r'\*\*What would you like.*?\*\*', '', clean_response)
+                clean_response = clean_response.strip()
+                
+                # Display cleaned response
+                st.markdown(clean_response)
                 
                 # Add to chat history
                 st.session_state.chat_history.append({
