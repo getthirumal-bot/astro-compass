@@ -932,99 +932,99 @@ Keep each to ONE sentence. Be specific and practical."""
             with col2:
                 if st.button("📝 Ask About Myself Instead", key="ask_self", use_container_width=True):
                     st.info("Please rephrase your question about your own chart!")
-            
-            return  # Don't process this question
         
-        # Add to history
-        st.session_state.chat_history.append({
-            "role": "user",
-            "content": prompt
-        })
-        
-        # Display user message
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        # Get AI response
-        with st.chat_message("assistant"):
-            # Visual progress showing 5-system analysis
-            progress_placeholder = st.empty()
+        else:
+            # Process the question normally
+            # Add to history
+            st.session_state.chat_history.append({
+                "role": "user",
+                "content": prompt
+            })
             
-            steps = [
-                ("🔮 Analyzing your cosmic blueprint...", 0),
-                ("✓ Loading birth chart data", 10),
-                ("⏳ Consulting Vedic Astrology...", 20),
-                ("⏳ Cross-checking KP System...", 35),
-                ("⏳ Analyzing Western perspective...", 50),
-                ("⏳ Interpreting Chinese elements...", 65),
-                ("⏳ Decoding Mayan calendar...", 80),
-                ("⏳ Synthesizing 5-system consensus...", 90),
-                ("⏳ Generating personalized insights...", 95),
-            ]
+            # Display user message
+            with st.chat_message("user"):
+                st.markdown(prompt)
             
-            import time
-            
-            # Show ALL steps for 2 seconds each so users can read
-            for step_text, progress_value in steps:
-                progress_placeholder.progress(progress_value / 100, text=step_text)
-                time.sleep(2.0)  # 2 seconds per step
+            # Get AI response
+            with st.chat_message("assistant"):
+                # Visual progress showing 5-system analysis
+                progress_placeholder = st.empty()
                 
-                # Make API call during "synthesizing" step
-                if "Synthesizing" in step_text:
-                    result = engine.ask_question(
-                        st.session_state.phone,
-                        prompt,
-                        conversation_history=st.session_state.chat_history
-                    )
-            
-            # Final completion
-            progress_placeholder.progress(1.0, text="✅ Analysis complete!")
-            time.sleep(0.5)
-            
-            # Clear progress
-            progress_placeholder.empty()
-            
-            if result['success']:
-                response = result['response']
+                steps = [
+                    ("🔮 Analyzing your cosmic blueprint...", 0),
+                    ("✓ Loading birth chart data", 10),
+                    ("⏳ Consulting Vedic Astrology...", 20),
+                    ("⏳ Cross-checking KP System...", 35),
+                    ("⏳ Analyzing Western perspective...", 50),
+                    ("⏳ Interpreting Chinese elements...", 65),
+                    ("⏳ Decoding Mayan calendar...", 80),
+                    ("⏳ Synthesizing 5-system consensus...", 90),
+                    ("⏳ Generating personalized insights...", 95),
+                ]
                 
-                # Extract follow-up options (format: • [Option text])
-                import re
-                follow_up_pattern = r'•\s*\[([^\]]+)\]'
-                follow_ups = re.findall(follow_up_pattern, response)
+                import time
                 
-                # Store follow-ups in session state for rendering outside chat
-                if follow_ups:
-                    st.session_state.current_followups = follow_ups[:3]  # Max 3
-                else:
-                    st.session_state.current_followups = []
-                
-                # Remove follow-up section from main response for cleaner display
-                if follow_ups:
-                    # Try multiple patterns to find where follow-ups start
-                    split_patterns = [
-                        r'\*\*What would you like.*?\*\*',
-                        r'What would you like.*?\?',
-                        r'•\s*\['  # Just split before first bullet
-                    ]
+                # Show ALL steps for 2 seconds each so users can read
+                for step_text, progress_value in steps:
+                    progress_placeholder.progress(progress_value / 100, text=step_text)
+                    time.sleep(2.0)  # 2 seconds per step
                     
-                    main_response = response
-                    for pattern in split_patterns:
-                        parts = re.split(pattern, response, maxsplit=1)
-                        if len(parts) > 1:
-                            main_response = parts[0].strip()
-                            break
+                    # Make API call during "synthesizing" step
+                    if "Synthesizing" in step_text:
+                        result = engine.ask_question(
+                            st.session_state.phone,
+                            prompt,
+                            conversation_history=st.session_state.chat_history
+                        )
+                
+                # Final completion
+                progress_placeholder.progress(1.0, text="✅ Analysis complete!")
+                time.sleep(0.5)
+                
+                # Clear progress
+                progress_placeholder.empty()
+                
+                if result['success']:
+                    response = result['response']
+                    
+                    # Extract follow-up options (format: • [Option text])
+                    import re
+                    follow_up_pattern = r'•\s*\[([^\]]+)\]'
+                    follow_ups = re.findall(follow_up_pattern, response)
+                    
+                    # Store follow-ups in session state for rendering outside chat
+                    if follow_ups:
+                        st.session_state.current_followups = follow_ups[:3]  # Max 3
+                    else:
+                        st.session_state.current_followups = []
+                    
+                    # Remove follow-up section from main response for cleaner display
+                    if follow_ups:
+                        # Try multiple patterns to find where follow-ups start
+                        split_patterns = [
+                            r'\*\*What would you like.*?\*\*',
+                            r'What would you like.*?\?',
+                            r'•\s*\['  # Just split before first bullet
+                        ]
+                        
+                        main_response = response
+                        for pattern in split_patterns:
+                            parts = re.split(pattern, response, maxsplit=1)
+                            if len(parts) > 1:
+                                main_response = parts[0].strip()
+                                break
+                    else:
+                        main_response = response
+                    
+                    # Display main response
+                    st.markdown(main_response)
+                    
+                    st.session_state.chat_history.append({
+                        "role": "assistant",
+                        "content": response
+                    })
                 else:
-                    main_response = response
-                
-                # Display main response
-                st.markdown(main_response)
-                
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": response
-                })
-            else:
-                st.error(result['response'])
+                    st.error(result['response'])
     
     # Chat input
     if prompt := st.chat_input("Ask your cosmic question..."):
