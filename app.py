@@ -696,61 +696,122 @@ if st.session_state.phone:
             import time
             from datetime import datetime
             
-            insight_steps = [
-                ("🔮 Reading your birth chart...", 25),
-                ("⏳ Analyzing current planetary transits...", 50),
-                ("⏳ Consulting 5 wisdom systems...", 75),
-                ("✅ Generating your personalized insights...", 100),
+            # Show initial progress
+            initial_steps = [
+                ("🔮 Reading your birth chart...", 20),
+                ("⏳ Analyzing current planetary transits...", 40),
+                ("⏳ Consulting 5 wisdom systems...", 60),
             ]
             
-            for step_text, progress_value in insight_steps:
+            for step_text, progress_value in initial_steps:
                 insight_progress.progress(progress_value / 100, text=step_text)
-                time.sleep(1.5)  # 1.5s per step = 6 seconds total
-                
-                # Make API call during last step
-                if progress_value == 100:
-                    welcome_prompt = f"""Generate 3 SPECIFIC, personalized insights for this user based on:
-
-1. Their birth chart: {user.get('birth_details', {})}
-2. Current date: {datetime.now().strftime('%B %d, %Y')}
-3. Their location: {user.get('pob', 'Unknown')}
-
-Format EXACTLY as:
-
-💼 **Career:** [Specific opportunity or timing in next 2-3 months, actionable advice]
-
-💰 **Finances:** [Money/investment insight with practical action, include timing]
-
-❤️ **Relationships:** [Love/partnership insight, include timing if relevant]
-
-CRITICAL:
-- Be SPECIFIC to their chart (not generic)
-- Include TIMING (months, quarters, specific dates)
-- Be ACTIONABLE (what should they do?)
-- Keep each insight to 1-2 sentences MAX
-- NO jargon unless you explain it immediately"""
-
-                    welcome_result = engine.ask_question(
-                        st.session_state.phone,
-                        welcome_prompt,
-                        conversation_history=[]
-                    )
+                time.sleep(2.0)  # 2s per step
             
+            # Show synthesizing while API call happens
+            insight_progress.progress(0.80, text="⏳ Synthesizing 5-system consensus...")
+            
+            # Make API call - WAIT for response
+            welcome_prompt = f"""Generate 3 SPECIFIC, personalized insights for this user:
+
+Birth chart: {user.get('birth_details', {})}
+Today: {datetime.now().strftime('%B %d, %Y')}
+Location: {user.get('pob', 'Unknown')}
+
+Format as 3 short insights (1-2 sentences each):
+
+💼 **Career:** [Specific opportunity or timing in next 2-3 months]
+
+💰 **Finances:** [Money/investment insight with timing]
+
+❤️ **Relationships:** [Love/partnership insight]
+
+Be SPECIFIC, include TIMING, keep it brief."""
+
+            welcome_result = engine.ask_question(
+                st.session_state.phone,
+                welcome_prompt,
+                conversation_history=[]
+            )
+            
+            # Complete progress
+            insight_progress.progress(1.0, text="✅ Analysis complete!")
+            time.sleep(0.5)
             insight_progress.empty()
             
+            # Handle result intelligently
             if welcome_result['success']:
                 insights_text = welcome_result['response']
                 
-                # Display insights in a nice box
+                # Display insights
                 st.markdown("### 💫 Your Personalized Insights Right Now:")
                 st.success(insights_text)
-                
                 st.markdown("---")
             else:
-                st.warning("Could not generate personalized insights. Please ask a question below!")
+                # Check WHY it failed
+                error_message = welcome_result.get('response', 'Unknown error')
+                
+                # Quota exceeded?
+                if 'quota' in error_message.lower() or 'limit' in error_message.lower() or 'capacity' in error_message.lower():
+                    st.warning("### ⚠️ Free Tier Capacity Reached")
+                    st.info("""
+                    The free tier is currently at capacity. You have two options:
+                    
+                    1. **Wait a few minutes** and refresh the page
+                    2. **Upgrade to BASIC plan** (₹99/$2/month) for priority access
+                    """)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("🔄 Refresh Page", key="refresh_welcome", use_container_width=True):
+                            st.rerun()
+                    with col2:
+                        if st.button("⭐ View Plans", key="upgrade_welcome_view", use_container_width=True):
+                            st.info("Scroll down to see pricing plans!")
+                else:
+                    # Other error - show retry
+                    st.error("### ❌ Couldn't Generate Insights")
+                    st.warning(f"Error: {error_message}")
+                    
+                    if st.button("🔄 Try Again", key="retry_welcome", use_container_width=True):
+                        st.rerun()
             
             # Ask me about any topic prompt
             st.markdown("**👇 Pick a topic to explore deeper, or ask me anything!**")
+            st.markdown("---")
+        
+        # Existing user (has asked questions before)
+        else:
+            st.markdown(f"### 👋 Welcome back, {user.get('name', 'friend')}!")
+            
+            # Generate 2 brief predictions for today
+            from datetime import datetime
+            today_prompt = f"""Generate 2 BRIEF predictions for this returning user based on TODAY'S date and their chart:
+
+User: {user.get('name')}
+Birth chart: {user.get('birth_details', {})}
+Today: {datetime.now().strftime('%A, %B %d, %Y')}
+
+Format EXACTLY as 2 short lines (one sentence each):
+
+🌟 **Today's Energy:** [One specific insight about today's planetary influence]
+
+💡 **Quick Tip:** [One actionable suggestion for today]
+
+Keep each to ONE sentence. Be specific and practical."""
+
+            today_result = engine.ask_question(
+                st.session_state.phone,
+                today_prompt,
+                conversation_history=[]
+            )
+            
+            if today_result['success']:
+                st.info(today_result['response'])
+            else:
+                # Handle failure gracefully - don't show error for returning users
+                # Just skip predictions and let them use the app
+                pass
+            
             st.markdown("---")
         
         # Show topic buttons for all users
@@ -889,10 +950,14 @@ CRITICAL:
                     num_cols = min(len(follow_ups), 3)  # Max 3 columns
                     cols = st.columns(num_cols)
                     
+                    # Use timestamp to create stable unique keys
+                    import time
+                    button_timestamp = int(time.time() * 1000)
+                    
                     for idx, option in enumerate(follow_ups[:3]):  # Show max 3 options
                         col_idx = idx % num_cols
                         with cols[col_idx]:
-                            if st.button(option, key=f"followup_sugg_{idx}_{len(st.session_state.chat_history)}", use_container_width=True):
+                            if st.button(option, key=f"followup_sugg_{idx}_{button_timestamp}", use_container_width=True):
                                 st.session_state.pending_question = option
                                 st.rerun()
                 
@@ -993,10 +1058,14 @@ CRITICAL:
                     num_cols = min(len(follow_ups), 3)  # Max 3 columns
                     cols = st.columns(num_cols)
                     
+                    # Use timestamp to create stable unique keys
+                    import time
+                    button_timestamp = int(time.time() * 1000)
+                    
                     for idx, option in enumerate(follow_ups[:3]):  # Show max 3 options
                         col_idx = idx % num_cols
                         with cols[col_idx]:
-                            if st.button(option, key=f"followup_{idx}_{len(st.session_state.chat_history)}", use_container_width=True):
+                            if st.button(option, key=f"followup_{idx}_{button_timestamp}", use_container_width=True):
                                 # Submit this as next question
                                 st.session_state.pending_question = option
                                 st.rerun()
@@ -1098,7 +1167,8 @@ else:
         ✓ Unlimited questions  
         ✓ 1 birth chart  
         ✓ 2 devices  
-        ✓ 5 core systems
+        ✓ 5 core systems  
+        &nbsp;
         
         ---
         **Worth it?**  
