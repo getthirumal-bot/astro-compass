@@ -931,11 +931,11 @@ Keep each to ONE sentence. Be specific and practical."""
         
         user = engine.db.get_user(st.session_state.phone)
         
-        if is_family_question and user.get('subscription') == 'FREE':
+        if is_family_question and user.get('subscription') != 'FAMILY':
             # Show upgrade prompt
             st.warning("### 👨‍👩‍👧‍👦 Family Member Analysis")
             st.info("""
-            **Your BASIC plan covers deep analysis of YOUR birth chart only.**
+            **Your current plan covers deep analysis of YOUR birth chart only.**
             
             To analyze family members using their DOB or birth details, upgrade to **FAMILY plan**.
             
@@ -1106,11 +1106,11 @@ Keep each to ONE sentence. Be specific and practical."""
         
         user = engine.db.get_user(st.session_state.phone)
         
-        if is_family_question and user.get('subscription') == 'FREE':
+        if is_family_question and user.get('subscription') != 'FAMILY':
             # Show upgrade message WITHOUT processing
             st.warning("### 👨‍👩‍👧‍👦 Family Member Analysis")
             st.info("""
-            **Your BASIC plan covers deep analysis of YOUR birth chart only.**
+            **Your current plan covers deep analysis of YOUR birth chart only.**
             
             To analyze family members using their DOB or birth details, upgrade to **FAMILY plan**.
             
