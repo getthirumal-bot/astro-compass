@@ -676,31 +676,6 @@ if st.session_state.phone:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
     
-    # Display follow-up buttons if AI generated them (AFTER chat history)
-    # DEBUG: Check what's in session state
-    if hasattr(st.session_state, 'follow_up_options'):
-        if st.session_state.follow_up_options:
-            st.markdown("### 💡 What would you like to explore next?")
-            
-            options = st.session_state.follow_up_options
-            num_cols = min(len(options), 3)
-            cols = st.columns(num_cols)
-            
-            follow_up_clicked = None
-            for idx, option in enumerate(options):
-                col_idx = idx % num_cols
-                with cols[col_idx]:
-                    if st.button(option, key=f"followup_{idx}", use_container_width=True):
-                        follow_up_clicked = option
-            
-            # If clicked, submit it
-            if follow_up_clicked:
-                st.session_state.pending_question = follow_up_clicked
-                st.session_state.follow_up_options = []  # Clear
-                st.rerun()
-            
-            st.markdown("---")
-    
     # Welcome insights and suggested questions
     # Only show if no chat history AND no pending question
     if len(st.session_state.chat_history) == 0 and not hasattr(st.session_state, 'pending_question'):
@@ -1005,11 +980,16 @@ Keep each to ONE sentence. Be specific and practical."""
                     follow_up_pattern = r'•\s*\[([^\]]+)\]'
                     follow_ups = re.findall(follow_up_pattern, response)
                     
+                    # If AI didn't generate follow-ups, provide generic ones
+                    if not follow_ups:
+                        follow_ups = [
+                            "What timing is best for this?",
+                            "What obstacles should I watch for?",
+                            "How can I prepare or maximize this?"
+                        ]
+                    
                     # Store follow-ups for button display
-                    if follow_ups:
-                        st.session_state.follow_up_options = follow_ups[:3]
-                    else:
-                        st.session_state.follow_up_options = []
+                    st.session_state.follow_up_options = follow_ups[:3]
                     
                     # Remove bracketed follow-ups from main response for cleaner display
                     clean_response = re.sub(r'•\s*\[[^\]]+\]', '', response)
@@ -1023,8 +1003,35 @@ Keep each to ONE sentence. Be specific and practical."""
                         "role": "assistant",
                         "content": response
                     })
+                    
+                    # Force rerun to display follow-up buttons
+                    st.rerun()
                 else:
                     st.error(result['response'])
+    
+    # Display follow-up buttons if AI generated them (AFTER all processing)
+    if hasattr(st.session_state, 'follow_up_options'):
+        if st.session_state.follow_up_options:
+            st.markdown("### 💡 What would you like to explore next?")
+            
+            options = st.session_state.follow_up_options
+            num_cols = min(len(options), 3)
+            cols = st.columns(num_cols)
+            
+            follow_up_clicked = None
+            for idx, option in enumerate(options):
+                col_idx = idx % num_cols
+                with cols[col_idx]:
+                    if st.button(option, key=f"followup_{idx}", use_container_width=True):
+                        follow_up_clicked = option
+            
+            # If clicked, submit it
+            if follow_up_clicked:
+                st.session_state.pending_question = follow_up_clicked
+                st.session_state.follow_up_options = []  # Clear
+                st.rerun()
+            
+            st.markdown("---")
     
     # Chat input
     if prompt := st.chat_input("Ask your cosmic question..."):
@@ -1086,11 +1093,16 @@ Keep each to ONE sentence. Be specific and practical."""
                 follow_up_pattern = r'•\s*\[([^\]]+)\]'
                 follow_ups = re.findall(follow_up_pattern, response)
                 
+                # If AI didn't generate follow-ups, provide generic ones
+                if not follow_ups:
+                    follow_ups = [
+                        "What timing is best for this?",
+                        "What obstacles should I watch for?",
+                        "How can I prepare or maximize this?"
+                    ]
+                
                 # Store follow-ups for button display
-                if follow_ups:
-                    st.session_state.follow_up_options = follow_ups[:3]
-                else:
-                    st.session_state.follow_up_options = []
+                st.session_state.follow_up_options = follow_ups[:3]
                 
                 # Remove bracketed follow-ups from main response
                 clean_response = re.sub(r'•\s*\[[^\]]+\]', '', response)
@@ -1112,6 +1124,9 @@ Keep each to ONE sentence. Be specific and practical."""
                 window.scrollTo(0, document.body.scrollHeight);
                 </script>
                 """, unsafe_allow_html=True)
+                
+                # Force rerun to display follow-up buttons
+                st.rerun()
             else:
                 # Error occurred
                 st.error(result['response'])
