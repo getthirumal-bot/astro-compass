@@ -991,9 +991,10 @@ Keep each to ONE sentence. Be specific and practical."""
                     # Store follow-ups for button display
                     st.session_state.follow_up_options = follow_ups[:3]
                     
-                    # Remove bracketed follow-ups from main response for cleaner display
-                    clean_response = re.sub(r'•\s*\[[^\]]+\]', '', response)
-                    clean_response = re.sub(r'\*\*What would you like.*?\*\*', '', clean_response)
+                    # Remove entire follow-up section from main response for cleaner display
+                    clean_response = response
+                    # Remove "What would you like..." line and all bullet points after it
+                    clean_response = re.sub(r'What would you like to explore next\?.*', '', clean_response, flags=re.DOTALL)
                     clean_response = clean_response.strip()
                     
                     # Display cleaned response
@@ -1104,9 +1105,9 @@ Keep each to ONE sentence. Be specific and practical."""
                 # Store follow-ups for button display
                 st.session_state.follow_up_options = follow_ups[:3]
                 
-                # Remove bracketed follow-ups from main response
-                clean_response = re.sub(r'•\s*\[[^\]]+\]', '', response)
-                clean_response = re.sub(r'\*\*What would you like.*?\*\*', '', clean_response)
+                # Remove entire follow-up section from main response
+                clean_response = response
+                clean_response = re.sub(r'What would you like to explore next\?.*', '', clean_response, flags=re.DOTALL)
                 clean_response = clean_response.strip()
                 
                 # Display cleaned response
