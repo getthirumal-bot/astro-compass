@@ -891,22 +891,59 @@ Keep each to ONE sentence. Be specific and practical."""
         del st.session_state.pending_question  # Delete immediately to prevent re-processing
         
         # Check if question is about family member (requires upgrade)
-        family_keywords = ['wife', 'husband', 'spouse', 'child', 'children', 'son', 'daughter', 
-                           'mother', 'father', 'parent', 'brother', 'sister', 'sibling',
-                           'mom', 'dad', 'grandmother', 'grandfather']
+        # Comprehensive keyword list
+        family_keywords = [
+            # Immediate family
+            'wife', 'husband', 'spouse', 'partner', 'girlfriend', 'boyfriend', 
+            'fiance', 'fiancee', 'son', 'daughter', 'child', 'children', 'kids',
+            'baby', 'infant', 'toddler', 'teen', 'teenager',
+            # Parents & grandparents
+            'mother', 'father', 'mom', 'dad', 'mama', 'papa', 'mummy', 'daddy',
+            'parent', 'parents', 'grandmother', 'grandfather', 'grandma', 'grandpa',
+            'granny', 'nana', 'nani', 'dada', 'dadi',
+            # Siblings
+            'brother', 'sister', 'sibling', 'bro', 'sis', 'twin',
+            'stepbrother', 'stepsister', 'half-brother', 'half-sister',
+            # Extended family
+            'uncle', 'aunt', 'aunty', 'auntie', 'nephew', 'niece', 'cousin',
+            'relative', 'in-law', 'mother-in-law', 'father-in-law',
+            'brother-in-law', 'sister-in-law', 'son-in-law', 'daughter-in-law'
+        ]
         
+        # Check for family keywords
         is_family_question = any(keyword in prompt.lower() for keyword in family_keywords)
+        
+        # Check for DOB patterns (dates like DD/MM/YYYY, MM/DD/YYYY, etc.)
+        import re
+        dob_patterns = [
+            r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',  # DD/MM/YYYY or MM/DD/YYYY
+            r'\bborn on\b',
+            r'\bbirth date\b',
+            r'\bbirthdate\b',
+            r'\bdate of birth\b',
+            r'\bdob\b',
+            r'\b(his|her|their) (chart|birth)\b'
+        ]
+        has_other_dob = any(re.search(pattern, prompt.lower()) for pattern in dob_patterns)
+        
+        # Flag as family question if either keywords OR DOB patterns detected
+        is_family_question = is_family_question or has_other_dob
+        
         user = engine.db.get_user(st.session_state.phone)
         
         if is_family_question and user.get('subscription') == 'FREE':
             # Show upgrade prompt
             st.warning("### 👨‍👩‍👧‍👦 Family Member Analysis")
             st.info("""
-            To analyze family members' birth charts, you need the **FAMILY plan**.
+            **Your BASIC plan covers deep analysis of YOUR birth chart only.**
+            
+            To analyze family members using their DOB or birth details, upgrade to **FAMILY plan**.
             
             **FAMILY Plan Benefits:**
             - ₹499/month (India) or $8/month (International)
-            - Analyze **8 family members**
+            - Analyze **8 family members** with their DOBs
+            - Complete birth charts for each member
+            - Compatibility analysis
             - All 16 astrology systems
             - ₹62/person = Less than 1 chai per day!
             """)
@@ -1036,121 +1073,180 @@ Keep each to ONE sentence. Be specific and practical."""
     
     # Chat input
     if prompt := st.chat_input("Ask your cosmic question..."):
-        # Add user message to chat
-        st.session_state.chat_history.append({
-            "role": "user",
-            "content": prompt
-        })
+        # Check for family member questions BEFORE processing
+        family_keywords = [
+            'wife', 'husband', 'spouse', 'partner', 'girlfriend', 'boyfriend', 
+            'fiance', 'fiancee', 'son', 'daughter', 'child', 'children', 'kids',
+            'baby', 'infant', 'toddler', 'teen', 'teenager',
+            'mother', 'father', 'mom', 'dad', 'mama', 'papa', 'mummy', 'daddy',
+            'parent', 'parents', 'grandmother', 'grandfather', 'grandma', 'grandpa',
+            'granny', 'nana', 'nani', 'dada', 'dadi',
+            'brother', 'sister', 'sibling', 'bro', 'sis', 'twin',
+            'stepbrother', 'stepsister', 'half-brother', 'half-sister',
+            'uncle', 'aunt', 'aunty', 'auntie', 'nephew', 'niece', 'cousin',
+            'relative', 'in-law', 'mother-in-law', 'father-in-law',
+            'brother-in-law', 'sister-in-law', 'son-in-law', 'daughter-in-law'
+        ]
         
-        with st.chat_message("user"):
-            st.markdown(prompt)
+        is_family_question = any(keyword in prompt.lower() for keyword in family_keywords)
         
-        # Get AI response
-        with st.chat_message("assistant"):
-            # Visual progress showing 5-system analysis
-            progress_placeholder = st.empty()
+        # Check for DOB patterns
+        import re
+        dob_patterns = [
+            r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
+            r'\bborn on\b',
+            r'\bbirth date\b',
+            r'\bbirthdate\b',
+            r'\bdate of birth\b',
+            r'\bdob\b',
+            r'\b(his|her|their) (chart|birth)\b'
+        ]
+        has_other_dob = any(re.search(pattern, prompt.lower()) for pattern in dob_patterns)
+        is_family_question = is_family_question or has_other_dob
+        
+        user = engine.db.get_user(st.session_state.phone)
+        
+        if is_family_question and user.get('subscription') == 'FREE':
+            # Show upgrade message WITHOUT processing
+            st.warning("### 👨‍👩‍👧‍👦 Family Member Analysis")
+            st.info("""
+            **Your BASIC plan covers deep analysis of YOUR birth chart only.**
             
-            steps = [
-                ("🔮 Analyzing your cosmic blueprint...", 0),
-                ("✓ Loading birth chart data", 10),
-                ("⏳ Consulting Vedic Astrology...", 20),
-                ("⏳ Cross-checking KP System...", 35),
-                ("⏳ Analyzing Western perspective...", 50),
-                ("⏳ Interpreting Chinese elements...", 65),
-                ("⏳ Decoding Mayan calendar...", 80),
-                ("⏳ Synthesizing 5-system consensus...", 90),
-                ("⏳ Generating personalized insights...", 95),
-            ]
+            To analyze family members using their DOB or birth details, upgrade to **FAMILY plan**.
             
-            import time
+            **FAMILY Plan Benefits:**
+            - ₹499/month (India) or $8/month (International)
+            - Analyze **8 family members** with their DOBs
+            - Complete birth charts for each member
+            - Compatibility analysis
+            - All 16 astrology systems
+            - ₹62/person = Less than 1 chai per day!
+            """)
             
-            # Show ALL steps for 2 seconds each so users can read
-            for step_text, progress_value in steps:
-                progress_placeholder.progress(progress_value / 100, text=step_text)
-                time.sleep(2.0)  # 2 seconds per step
-                
-                # Make API call during "synthesizing" step
-                if "Synthesizing" in step_text:
-                    result = engine.ask_question(
-                        st.session_state.phone,
-                        prompt,
-                        conversation_history=st.session_state.chat_history
-                    )
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("⭐ Upgrade to FAMILY", key="upgrade_family_chat", use_container_width=True):
+                    st.info("Scroll down to see FAMILY plan details!")
+            with col2:
+                if st.button("📝 Ask About Myself", key="ask_self_chat", use_container_width=True):
+                    st.info("Please ask about your own birth chart!")
+        else:
+            # Process question normally
+            # Add user message to chat
+            st.session_state.chat_history.append({
+                "role": "user",
+                "content": prompt
+            })
             
-            # Final completion
-            progress_placeholder.progress(1.0, text="✅ Analysis complete!")
-            time.sleep(0.5)
+            with st.chat_message("user"):
+                st.markdown(prompt)
             
-            # Clear progress and show response
-            progress_placeholder.empty()
-            
-            # Display result
-            
-            if result['success']:
-                response = result['response']
+            # Get AI response
+            with st.chat_message("assistant"):
+                # Visual progress showing 5-system analysis
+                progress_placeholder = st.empty()
                 
-                # Extract follow-up options (format: • [Option text])
-                import re
-                follow_up_pattern = r'•\s*\[([^\]]+)\]'
-                follow_ups = re.findall(follow_up_pattern, response)
+                steps = [
+                    ("🔮 Analyzing your cosmic blueprint...", 0),
+                    ("✓ Loading birth chart data", 10),
+                    ("⏳ Consulting Vedic Astrology...", 20),
+                    ("⏳ Cross-checking KP System...", 35),
+                    ("⏳ Analyzing Western perspective...", 50),
+                    ("⏳ Interpreting Chinese elements...", 65),
+                    ("⏳ Decoding Mayan calendar...", 80),
+                    ("⏳ Synthesizing 5-system consensus...", 90),
+                    ("⏳ Generating personalized insights...", 95),
+                ]
                 
-                # If AI didn't generate follow-ups, provide generic ones
-                if not follow_ups:
-                    follow_ups = [
-                        "What timing is best for this?",
-                        "What obstacles should I watch for?",
-                        "How can I prepare or maximize this?"
-                    ]
+                import time
                 
-                # Store follow-ups for button display
-                st.session_state.follow_up_options = follow_ups[:3]
-                
-                # Remove entire follow-up section from main response
-                clean_response = response
-                clean_response = re.sub(r'What would you like to explore next\?.*', '', clean_response, flags=re.DOTALL)
-                clean_response = clean_response.strip()
-                
-                # Display cleaned response
-                st.markdown(clean_response)
-                
-                # Add to chat history
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": response
-                })
-                
-                # Auto-scroll to bottom using JavaScript
-                st.markdown("""
-                <script>
-                window.scrollTo(0, document.body.scrollHeight);
-                </script>
-                """, unsafe_allow_html=True)
-                
-                # Force rerun to display follow-up buttons
-                st.rerun()
-            else:
-                # Error occurred
-                st.error(result['response'])
-                
-                # Check if retry is available
-                if result.get('retry_available'):
-                    st.warning("💡 **Tip:** This is temporary server congestion. Try again in a few seconds!")
+                # Show ALL steps for 2 seconds each so users can read
+                for step_text, progress_value in steps:
+                    progress_placeholder.progress(progress_value / 100, text=step_text)
+                    time.sleep(2.0)  # 2 seconds per step
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("🔄 Retry Now", key="retry_btn"):
-                            st.rerun()
-                    with col2:
-                        if st.button("⭐ Upgrade to Skip Waits", key="upgrade_btn"):
+                    # Make API call during "synthesizing" step
+                    if "Synthesizing" in step_text:
+                        result = engine.ask_question(
+                            st.session_state.phone,
+                            prompt,
+                            conversation_history=st.session_state.chat_history
+                        )
+                
+                # Final completion
+                progress_placeholder.progress(1.0, text="✅ Analysis complete!")
+                time.sleep(0.5)
+                
+                # Clear progress and show response
+                progress_placeholder.empty()
+                
+                # Display result
+                
+                if result['success']:
+                    response = result['response']
+                    
+                    # Extract follow-up options (format: • [Option text])
+                    import re
+                    follow_up_pattern = r'•\s*\[([^\]]+)\]'
+                    follow_ups = re.findall(follow_up_pattern, response)
+                    
+                    # If AI didn't generate follow-ups, provide generic ones
+                    if not follow_ups:
+                        follow_ups = [
+                            "What timing is best for this?",
+                            "What obstacles should I watch for?",
+                            "How can I prepare or maximize this?"
+                        ]
+                    
+                    # Store follow-ups for button display
+                    st.session_state.follow_up_options = follow_ups[:3]
+                    
+                    # Remove entire follow-up section from main response
+                    clean_response = response
+                    clean_response = re.sub(r'What would you like to explore next\?.*', '', clean_response, flags=re.DOTALL)
+                    clean_response = clean_response.strip()
+                    
+                    # Display cleaned response
+                    st.markdown(clean_response)
+                    
+                    # Add to chat history
+                    st.session_state.chat_history.append({
+                        "role": "assistant",
+                        "content": response
+                    })
+                    
+                    # Auto-scroll to bottom using JavaScript
+                    st.markdown("""
+                    <script>
+                    window.scrollTo(0, document.body.scrollHeight);
+                    </script>
+                    """, unsafe_allow_html=True)
+                    
+                    # Force rerun to display follow-up buttons
+                    st.rerun()
+                else:
+                    # Error occurred
+                    st.error(result['response'])
+                    
+                    # Check if retry is available
+                    if result.get('retry_available'):
+                        st.warning("💡 **Tip:** This is temporary server congestion. Try again in a few seconds!")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("🔄 Retry Now", key="retry_btn"):
+                                st.rerun()
+                        with col2:
+                            if st.button("⭐ Upgrade to Skip Waits", key="upgrade_btn"):
+                                upgrade_result = engine.upgrade_to_paid(st.session_state.phone)
+                                st.success(upgrade_result['message'])
+                                st.rerun()
+                    else:
+                        # Quota exceeded - show upgrade option
+                        if st.button("💎 Upgrade Now - $1/month"):
                             upgrade_result = engine.upgrade_to_paid(st.session_state.phone)
                             st.success(upgrade_result['message'])
                             st.rerun()
-                else:
-                    # Quota exceeded - show upgrade option
-                    if st.button("💎 Upgrade Now - $1/month"):
-                        upgrade_result = engine.upgrade_to_paid(st.session_state.phone)
-                        st.success(upgrade_result['message'])
-                        st.rerun()
 
 else:
     # Not logged in - show welcome
