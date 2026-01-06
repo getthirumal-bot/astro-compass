@@ -255,6 +255,13 @@ def create_session(phone):
     if success:
         st.session_state.session_token = session_token
         st.session_state.phone = phone
+        
+        # Check if user had selected an upgrade plan before login
+        if hasattr(st.session_state, 'pending_upgrade') and st.session_state.pending_upgrade:
+            # User clicked upgrade button before logging in
+            # Process the upgrade now
+            st.session_state.show_upgrade_modal = True
+        
         return session_token
     else:
         st.error(f"❌ {message}")
@@ -667,6 +674,42 @@ with st.sidebar:
 if st.session_state.phone:
     user = engine.db.get_user(st.session_state.phone)
     
+    # Check if user has pending upgrade (clicked upgrade before login)
+    if hasattr(st.session_state, 'show_upgrade_modal') and st.session_state.show_upgrade_modal:
+        plan = st.session_state.get('pending_upgrade', 'FAMILY')
+        
+        st.success(f"### ✅ Welcome! You selected the {plan} plan")
+        st.info(f"""
+        **Payment integration coming soon!**
+        
+        For now, we'll temporarily upgrade you to **{plan}** for testing.
+        
+        Click below to activate your {plan} plan:
+        """)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(f"✨ Activate {plan} Plan", use_container_width=True, type="primary", key="activate_upgrade"):
+                # Temporary upgrade - update subscription in database
+                engine.db.update_user(st.session_state.phone, {
+                    'subscription': plan,
+                    'questions_left': 999999 if plan != 'FREE' else 7
+                })
+                st.success(f"🎉 {plan} plan activated!")
+                
+                # Clear pending upgrade
+                st.session_state.show_upgrade_modal = False
+                st.session_state.pending_upgrade = None
+                st.rerun()
+        
+        with col2:
+            if st.button("Maybe Later", use_container_width=True, key="skip_upgrade"):
+                st.session_state.show_upgrade_modal = False
+                st.session_state.pending_upgrade = None
+                st.rerun()
+        
+        st.divider()
+    
     # Display chat history
     chat_container = st.container()
     
@@ -981,7 +1024,13 @@ Keep each to ONE sentence. Be specific and practical."""
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("⭐ Upgrade to FAMILY", key="upgrade_family_prompt", use_container_width=True):
-                    st.info("Scroll down to see FAMILY plan details!")
+                    # Temporary upgrade for testing
+                    engine.db.update_user(st.session_state.phone, {
+                        'subscription': 'FAMILY',
+                        'questions_left': 999999
+                    })
+                    st.success("🎉 FAMILY plan activated! You can now ask about family members.")
+                    st.rerun()
             with col2:
                 if st.button("📝 Ask About Myself Instead", key="ask_self", use_container_width=True):
                     st.info("Please rephrase your question about your own chart!")
@@ -1194,7 +1243,13 @@ Keep each to ONE sentence. Be specific and practical."""
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("⭐ Upgrade to FAMILY", key="upgrade_family_chat", use_container_width=True):
-                    st.info("Scroll down to see FAMILY plan details!")
+                    # Temporary upgrade for testing
+                    engine.db.update_user(st.session_state.phone, {
+                        'subscription': 'FAMILY',
+                        'questions_left': 999999
+                    })
+                    st.success("🎉 FAMILY plan activated! You can now ask about family members.")
+                    st.rerun()
             with col2:
                 if st.button("📝 Ask About Myself", key="ask_self_chat", use_container_width=True):
                     st.info("Please ask about your own birth chart!")
@@ -1402,7 +1457,8 @@ else:
         ⚡ Get started today!
         """)
         if st.button("Start BASIC", use_container_width=True, key="upgrade_basic_welcome"):
-            st.info("👈 Please login first to upgrade")
+            st.session_state.pending_upgrade = 'BASIC'
+            st.info("👆 Please login first to upgrade")
     
     with col2:
         st.markdown("""
@@ -1422,7 +1478,8 @@ else:
         💫 **$1/person** = Best value!
         """)
         if st.button("Get FAMILY Plan", use_container_width=True, type="primary", key="upgrade_family_welcome"):
-            st.info("👈 Please login first to upgrade")
+            st.session_state.pending_upgrade = 'FAMILY'
+            st.info("👆 Please login first to upgrade")
     
     with col3:
         st.markdown("""
@@ -1443,7 +1500,8 @@ else:
         💒 Marriage bureaus
         """)
         if st.button("Go VIP", use_container_width=True, key="upgrade_vip_welcome"):
-            st.info("👈 Please login first to upgrade")
+            st.session_state.pending_upgrade = 'VIP'
+            st.info("👆 Please login first to upgrade")
     
     st.markdown("---")
     
