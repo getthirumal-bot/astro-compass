@@ -757,7 +757,7 @@ Be SPECIFIC, include TIMING, keep it brief."""
             insight_progress.empty()
             
             # Handle result intelligently
-            if welcome_result['success']:
+            if welcome_result.get('success', False):
                 insights_text = welcome_result['response']
                 
                 # Display insights
@@ -785,6 +785,18 @@ Be SPECIFIC, include TIMING, keep it brief."""
                     with col2:
                         if st.button("⭐ View Plans", key="upgrade_welcome_view", use_container_width=True):
                             st.info("Scroll down to see pricing plans!")
+                elif 'lifetime_questions' in error_message:
+                    # Database initialization issue - let user skip and use app
+                    st.warning("### ⚠️ Welcome Insights Unavailable")
+                    st.info("""
+                    We couldn't generate your welcome insights right now, but you can still use the app!
+                    
+                    **Your account is active with 7 free questions.**
+                    
+                    Pick a topic below or ask any question to get started!
+                    """)
+                    
+                    st.success("✅ **You can start asking questions now** - just pick a topic or type your question!")
                 else:
                     # Other error - show retry
                     st.error("### ❌ Couldn't Generate Insights")
@@ -1063,7 +1075,43 @@ Keep each to ONE sentence. Be specific and practical."""
                     # Force rerun to display follow-up buttons
                     st.rerun()
                 else:
-                    st.error(result['response'])
+                    # Handle different error types with user-friendly messages
+                    error_response = result.get('response', '')
+                    error_type = result.get('error_type', 'unknown')
+                    
+                    if error_response == 'AI_OVERLOADED' or error_type == 'overload':
+                        st.warning("### ⚠️ AI Service Temporarily Busy")
+                        st.info("""
+                        Our AI is experiencing high demand right now. This happens when many users are asking questions simultaneously.
+                        
+                        **Please try again in 30-60 seconds.**
+                        
+                        Your question has NOT been counted against your quota.
+                        """)
+                        
+                        if st.button("🔄 Try Again", key="retry_overload", use_container_width=True):
+                            st.rerun()
+                    
+                    elif error_response == 'QUOTA_EXCEEDED' or error_type == 'quota':
+                        st.error("### ❌ Daily Quota Reached")
+                        st.info("""
+                        We've reached our daily AI request limit. 
+                        
+                        **Options:**
+                        1. Wait until tomorrow (resets at midnight UTC)
+                        2. Upgrade to BASIC plan for priority access
+                        """)
+                        
+                        if st.button("⭐ View Plans", key="upgrade_quota", use_container_width=True):
+                            st.info("Scroll down to see pricing plans!")
+                    
+                    else:
+                        st.error("### ❌ Unexpected Error")
+                        st.warning(f"Something went wrong: {error_response}")
+                        st.info("Please try again or contact support if the problem persists.")
+                        
+                        if st.button("🔄 Try Again", key="retry_error", use_container_width=True):
+                            st.rerun()
     
     # Display follow-up buttons if AI generated them (AFTER all processing)
     if hasattr(st.session_state, 'follow_up_options'):
@@ -1245,27 +1293,42 @@ Keep each to ONE sentence. Be specific and practical."""
                     # Force rerun to display follow-up buttons
                     st.rerun()
                 else:
-                    # Error occurred
-                    st.error(result['response'])
+                    # Handle different error types with user-friendly messages
+                    error_response = result.get('response', '')
+                    error_type = result.get('error_type', 'unknown')
                     
-                    # Check if retry is available
-                    if result.get('retry_available'):
-                        st.warning("💡 **Tip:** This is temporary server congestion. Try again in a few seconds!")
+                    if error_response == 'AI_OVERLOADED' or error_type == 'overload':
+                        st.warning("### ⚠️ AI Service Temporarily Busy")
+                        st.info("""
+                        Our AI is experiencing high demand right now. This happens when many users are asking questions simultaneously.
                         
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button("🔄 Retry Now", key="retry_btn"):
-                                st.rerun()
-                        with col2:
-                            if st.button("⭐ Upgrade to Skip Waits", key="upgrade_btn"):
-                                upgrade_result = engine.upgrade_to_paid(st.session_state.phone)
-                                st.success(upgrade_result['message'])
-                                st.rerun()
+                        **Please try again in 30-60 seconds.**
+                        
+                        Your question has NOT been counted against your quota.
+                        """)
+                        
+                        if st.button("🔄 Try Again", key="retry_overload_chat", use_container_width=True):
+                            st.rerun()
+                    
+                    elif error_response == 'QUOTA_EXCEEDED' or error_type == 'quota':
+                        st.error("### ❌ Daily Quota Reached")
+                        st.info("""
+                        We've reached our daily AI request limit. 
+                        
+                        **Options:**
+                        1. Wait until tomorrow (resets at midnight UTC)
+                        2. Upgrade to BASIC plan for priority access
+                        """)
+                        
+                        if st.button("⭐ View Plans", key="upgrade_quota_chat", use_container_width=True):
+                            st.info("Scroll down to see pricing plans!")
+                    
                     else:
-                        # Quota exceeded - show upgrade option
-                        if st.button("💎 Upgrade Now - $1/month"):
-                            upgrade_result = engine.upgrade_to_paid(st.session_state.phone)
-                            st.success(upgrade_result['message'])
+                        st.error("### ❌ Unexpected Error")
+                        st.warning(f"Something went wrong: {error_response}")
+                        st.info("Please try again or contact support if the problem persists.")
+                        
+                        if st.button("🔄 Try Again", key="retry_error_chat", use_container_width=True):
                             st.rerun()
 
 else:
