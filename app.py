@@ -265,13 +265,17 @@ def logout():
     if st.session_state.session_token and st.session_state.phone:
         session_manager.logout_session(st.session_state.phone, st.session_state.session_token)
     
+    # Clear ALL session state to prevent data leakage between users
     st.session_state.phone = None
     st.session_state.session_token = None
     st.session_state.chat_history = []
+    st.session_state.follow_up_options = []  # Clear follow-ups!
     st.session_state.otp_sent = False
     st.session_state.otp_phone = None
     if 'current_otp' in st.session_state:
         del st.session_state.current_otp
+    if 'pending_question' in st.session_state:
+        del st.session_state.pending_question
     st.rerun()
 
 # Header
@@ -735,11 +739,17 @@ Format as 3 short insights (1-2 sentences each):
 
 Be SPECIFIC, include TIMING, keep it brief."""
 
-            welcome_result = engine.ask_question(
-                st.session_state.phone,
-                welcome_prompt,
-                conversation_history=[]
-            )
+            try:
+                welcome_result = engine.ask_question(
+                    st.session_state.phone,
+                    welcome_prompt,
+                    conversation_history=[]
+                )
+            except Exception as e:
+                welcome_result = {
+                    'success': False,
+                    'response': f'API Error: {str(e)}'
+                }
             
             # Complete progress
             insight_progress.progress(1.0, text="✅ Analysis complete!")
@@ -824,11 +834,17 @@ Format EXACTLY as 2 short lines (one sentence each):
 
 Keep each to ONE sentence. Be specific and practical."""
 
-                    today_result = engine.ask_question(
-                        st.session_state.phone,
-                        today_prompt,
-                        conversation_history=[]
-                    )
+                    try:
+                        today_result = engine.ask_question(
+                            st.session_state.phone,
+                            today_prompt,
+                            conversation_history=[]
+                        )
+                    except Exception as e:
+                        today_result = {
+                            'success': False,
+                            'response': f'API Error: {str(e)}'
+                        }
             
             today_progress.empty()
             
@@ -930,9 +946,11 @@ Keep each to ONE sentence. Be specific and practical."""
         is_family_question = is_family_question or has_other_dob
         
         user = engine.db.get_user(st.session_state.phone)
+        user_questions_left = user.get('questions_left', 0)
         
-        if is_family_question and user.get('subscription') != 'FAMILY':
-            # Show upgrade prompt
+        # Only block family questions if user has NO questions left AND not on FAMILY plan
+        if is_family_question and user.get('subscription') != 'FAMILY' and user_questions_left == 0:
+            # Hard block - no questions left
             st.warning("### 👨‍👩‍👧‍👦 Family Member Analysis")
             st.info("""
             **Your current plan covers deep analysis of YOUR birth chart only.**
@@ -957,7 +975,7 @@ Keep each to ONE sentence. Be specific and practical."""
                     st.info("Please rephrase your question about your own chart!")
         
         else:
-            # Process the question normally
+            # Process the question normally (either not family question, OR user has questions left)
             # Add to history
             st.session_state.chat_history.append({
                 "role": "user",
@@ -1105,8 +1123,10 @@ Keep each to ONE sentence. Be specific and practical."""
         is_family_question = is_family_question or has_other_dob
         
         user = engine.db.get_user(st.session_state.phone)
+        user_questions_left = user.get('questions_left', 0)
         
-        if is_family_question and user.get('subscription') != 'FAMILY':
+        # Only block if NO questions left AND not on FAMILY plan
+        if is_family_question and user.get('subscription') != 'FAMILY' and user_questions_left == 0:
             # Show upgrade message WITHOUT processing
             st.warning("### 👨‍👩‍👧‍👦 Family Member Analysis")
             st.info("""
