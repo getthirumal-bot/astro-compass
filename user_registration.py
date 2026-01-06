@@ -109,8 +109,11 @@ class UserDatabase:
             'birth_details': birth_details,
             
             'tier': 'FREE',  # FREE, PAID, PREMIUM, VIP
+            'subscription': 'FREE',  # For app.py compatibility
             'questions_asked': 0,
             'questions_limit': 7,  # 7 for FREE, None for paid tiers
+            'lifetime_questions': 0,  # NEW: Track all questions ever asked
+            'questions_left': 7,  # NEW: Remaining questions for this tier
             
             'otp_verified': True,  # Set to True after OTP verification
             
@@ -146,10 +149,12 @@ class UserDatabase:
                 json.dump(users, f, indent=2)
     
     def increment_question_count(self, phone: str):
-        """Increment lifetime question counter"""
+        """Increment lifetime question counter and decrement questions_left"""
         user = self.get_user(phone)
         if user:
             user['questions_asked'] = user.get('questions_asked', 0) + 1
+            user['lifetime_questions'] = user.get('lifetime_questions', 0) + 1
+            user['questions_left'] = max(0, user.get('questions_left', 7) - 1)
             user['updated_at'] = datetime.now().isoformat()
             self.update_user(phone, user)
     

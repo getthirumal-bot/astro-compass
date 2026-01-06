@@ -235,8 +235,8 @@ CURRENT QUERY: {question}
             user = self.db.get_user(phone)
             
             usage_msg = ""
-            if user['subscription'] == 'FREE':
-                remaining = 15 - user['lifetime_questions']
+            if user.get('subscription', 'FREE') == 'FREE':
+                remaining = 7 - user.get('lifetime_questions', 0)
                 usage_msg = f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📊 {remaining} free questions remaining"
             
             return {
